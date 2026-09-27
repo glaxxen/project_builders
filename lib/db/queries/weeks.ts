@@ -1,7 +1,7 @@
 import type { Week } from "../schema";
 
 /**
- * In-memory / mock database store for weeks.
+ * In-memory / initial database store for weeks.
  * Initialized with default Data Analysis cohort data.
  * Week 1 is published; Weeks 2, 3, and 4 default to published: false.
  */
@@ -14,10 +14,10 @@ let WEEKS_STORE: Week[] = [
     brief: "Clean, model, and analyze 50,000+ transaction rows across 6 African markets. Build 4 standard KPI cards and 5 pivot charts following the Metric by Dimension rule.",
     datasetUrl: "/assets/AfriMart_Sales_Dataset.xlsx",
     slidesUrl: "/assets/02_Dashboard_Build_and_Submission_Guide.docx",
-    deadline: "2026-10-02T23:59:59.000Z",
+    deadline: new Date("2026-10-02T23:59:59.000Z"),
     published: true, // Week 1 is published for active students
-    createdAt: "2026-09-25T00:00:00.000Z",
-    updatedAt: "2026-09-25T00:00:00.000Z",
+    createdAt: new Date("2026-09-25T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
   },
   {
     id: "week-02",
@@ -25,12 +25,12 @@ let WEEKS_STORE: Week[] = [
     weekNumber: 2,
     title: "FinTech Customer Churn & Retention Analytics",
     brief: "Construct monthly cohort retention matrices and churn risk scores using transaction activity logs.",
-    datasetUrl: undefined,
-    slidesUrl: undefined,
-    deadline: "2026-10-09T23:59:59.000Z",
+    datasetUrl: null,
+    slidesUrl: null,
+    deadline: new Date("2026-10-09T23:59:59.000Z"),
     published: false, // Default: false (unpublished)
-    createdAt: "2026-09-25T00:00:00.000Z",
-    updatedAt: "2026-09-25T00:00:00.000Z",
+    createdAt: new Date("2026-09-25T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
   },
   {
     id: "week-03",
@@ -38,12 +38,12 @@ let WEEKS_STORE: Week[] = [
     weekNumber: 3,
     title: "Cross-Border Logistics SLAs & Throughput",
     brief: "Diagnose shipment transit variances and carrier SLA violations across regional border corridors.",
-    datasetUrl: undefined,
-    slidesUrl: undefined,
-    deadline: "2026-10-16T23:59:59.000Z",
+    datasetUrl: null,
+    slidesUrl: null,
+    deadline: new Date("2026-10-16T23:59:59.000Z"),
     published: false, // Default: false (unpublished)
-    createdAt: "2026-09-25T00:00:00.000Z",
-    updatedAt: "2026-09-25T00:00:00.000Z",
+    createdAt: new Date("2026-09-25T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
   },
   {
     id: "week-04",
@@ -51,12 +51,12 @@ let WEEKS_STORE: Week[] = [
     weekNumber: 4,
     title: "Executive Capstone & Final Assessment",
     brief: "End-to-end executive data story synthesis, repository documentation, and gated Final Assessment.",
-    datasetUrl: undefined,
-    slidesUrl: undefined,
-    deadline: "2026-10-23T23:59:59.000Z",
+    datasetUrl: null,
+    slidesUrl: null,
+    deadline: new Date("2026-10-23T23:59:59.000Z"),
     published: false, // Default: false (unpublished)
-    createdAt: "2026-09-25T00:00:00.000Z",
-    updatedAt: "2026-09-25T00:00:00.000Z",
+    createdAt: new Date("2026-09-25T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
   },
 ];
 
@@ -113,7 +113,7 @@ export async function setWeekPublishedStatus(
   const updated: Week = {
     ...current,
     published,
-    updatedAt: new Date().toISOString(),
+    updatedAt: new Date(),
   };
 
   WEEKS_STORE[index] = updated;

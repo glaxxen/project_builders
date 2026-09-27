@@ -1,8 +1,30 @@
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, CheckCircle, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, CheckCircle, EnvelopeSimple, Sparkle } from "@phosphor-icons/react/dist/ssr";
+import { db } from "@/lib/db";
+import { verificationTokens } from "@/lib/db/schema";
+import { desc } from "drizzle-orm";
 
-export default function VerifyRequestPage() {
+export default async function VerifyRequestPage() {
+  let devMagicLink: string | null = null;
+  let devEmail: string | null = null;
+
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const [latest] = await db
+        .select()
+        .from(verificationTokens)
+        .orderBy(desc(verificationTokens.expires))
+        .limit(1);
+
+      if (latest && new Date(latest.expires) > new Date()) {
+        devEmail = latest.identifier;
+        devMagicLink = `/api/auth/callback/resend?callbackUrl=${encodeURIComponent("/dashboard")}&token=${latest.token}&email=${encodeURIComponent(latest.identifier)}`;
+      }
+    } catch (err) {
+      console.error("Could not fetch dev magic link:", err);
+    }
+  }
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#FAF8F3] text-[#102038] flex flex-col justify-between p-6 sm:p-10 lg:p-14 select-none">
       {/* Top Header Micro-Bar */}
@@ -46,8 +68,32 @@ export default function VerifyRequestPage() {
           </div>
 
           <p className="text-sm font-sans text-[#4A5568] leading-relaxed">
-            We sent a single-use sign-in link to your email address. Click the link in your message to access your dashboard immediately.
+            If you signed up with your registered Resend account (<span className="font-semibold text-[#102038]">twcfgdc@gmail.com</span>), a real magic link was sent to your inbox.
           </p>
+
+          {/* Dev Instant Sign-In One-Click Action */}
+          {devMagicLink && (
+            <div className="p-4 rounded-xl bg-[#FAF8F3] border-2 border-[#5BBFA4] text-left space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-[#1E4D40] uppercase tracking-wider">
+                  <Sparkle size={14} weight="fill" className="text-[#5BBFA4]" />
+                  <span>Dev Mode Instant Sign-In</span>
+                </div>
+                <span className="text-[10px] font-mono bg-[#EBF7F4] text-[#1E4D40] px-2 py-0.5 rounded font-semibold">
+                  Local Active
+                </span>
+              </div>
+              <p className="text-xs font-sans text-[#4A5568] leading-normal">
+                Because Resend&apos;s free sandbox restricts real delivery to the account owner until a custom domain is verified, click below to log in directly:
+              </p>
+              <a
+                href={devMagicLink}
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 text-sm font-sans font-semibold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] active:bg-[#0A1424] rounded-lg transition-colors shadow-sm text-center"
+              >
+                <span>Sign In as {devEmail} &rarr;</span>
+              </a>
+            </div>
+          )}
 
           <div className="p-3.5 rounded-lg bg-[#FAF8F3] border border-[#E8E2D6] text-xs font-mono text-[#7E8B9B]">
             This link is valid for 24 hours and expires after first use.
@@ -56,7 +102,7 @@ export default function VerifyRequestPage() {
           <div className="pt-2">
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-sans font-semibold text-[#102038] hover:bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg transition-colors"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-sans font-medium text-[#102038] hover:bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg transition-colors"
             >
               <ArrowLeft size={16} weight="bold" />
               <span>Back to Sign In</span>

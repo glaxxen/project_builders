@@ -14,9 +14,19 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(
-    errorParam ? "Sign-in link was invalid or has expired. Please request a new one." : ""
-  );
+  
+  function getInitialErrorMessage(param: string | null): string {
+    if (!param) return "";
+    if (param === "Configuration") {
+      return "Resend free tier restriction: testing emails can only be delivered to your registered Resend email (twcfgdc@gmail.com). In development, your magic link is printed in your terminal console!";
+    }
+    if (param === "Verification") {
+      return "Sign-in link was invalid or has expired. Please request a new one.";
+    }
+    return "Unable to sign in. Please try again or check terminal logs.";
+  }
+
+  const [errorMessage, setErrorMessage] = useState(getInitialErrorMessage(errorParam));
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

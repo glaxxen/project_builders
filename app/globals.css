@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Canvas & Base Tokens */
+    --background: 43 33% 97%;          /* #FAF8F3 Warm Canvas Cream */
+    --foreground: 216 56% 14%;         /* #102038 Deep Navy Text */
+
+    --card: 0 0% 100%;                 /* #FFFFFF Pure White Surface */
+    --card-foreground: 216 56% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 216 56% 14%;
+
+    /* Brand Primary: Deep Navy */
+    --primary: 216 56% 14%;            /* #102038 */
+    --primary-foreground: 43 33% 97%;  /* #FAF8F3 */
+
+    /* Brand Secondary: Mint Tint */
+    --secondary: 164 42% 94%;          /* #EBF7F4 */
+    --secondary-foreground: 164 45% 25%;
+
+    /* Muted / Neutral */
+    --muted: 42 27% 93%;               /* #F3EFE6 Warm Neutral */
+    --muted-foreground: 218 17% 35%;   /* #4A5568 */
+
+    /* Accent: Mint Brand Highlight */
+    --accent: 164 45% 55%;             /* #5BBFA4 Mint */
+    --accent-foreground: 216 56% 14%;
+
+    /* Destructive */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Borders & Focus Rings */
+    --border: 42 20% 88%;              /* Warm boundary */
+    --input: 42 20% 88%;
+    --ring: 164 45% 55%;               /* Mint focus ring */
+
+    --radius: 0.625rem;
+
+    /* Raw Brand Tokens */
+    --brand-navy: #233B5F;
+    --brand-navy-dark: #102038;
+    --brand-navy-deep: #0A1424;
+    --brand-navy-soft: #335384;
+
+    --brand-mint: #5BBFA4;
+    --brand-mint-light: #77CBB3;
+    --brand-mint-soft: #EBF7F4;
+
+    --brand-gold: #C8A55B;
+    --brand-gold-deep: #BA9C60;
+    --brand-gold-soft: #FDF8ED;
+
+    --canvas-cream: #FAF8F3;
+    --canvas-surface: #FFFFFF;
+    --canvas-muted: #F3EFE6;
+  }
+
+  .dark {
+    --background: 218 57% 9%;          /* #0A1424 Deep Midnight Navy */
+    --foreground: 43 33% 97%;          /* #FAF8F3 Cream */
+
+    --card: 216 56% 14%;               /* #102038 Deep Navy Card */
+    --card-foreground: 43 33% 97%;
+
+    --popover: 216 56% 14%;
+    --popover-foreground: 43 33% 97%;
+
+    --primary: 164 45% 55%;            /* Mint Primary in dark */
+    --primary-foreground: 218 57% 9%;
+
+    --secondary: 216 36% 25%;          /* #233B5F */
+    --secondary-foreground: 43 33% 97%;
+
+    --muted: 216 36% 20%;
+    --muted-foreground: 214 12% 70%;
+
+    --accent: 40 50% 57%;              /* Gold Accent in dark */
+    --accent-foreground: 218 57% 9%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 216 36% 22%;
+    --input: 216 36% 22%;
+    --ring: 164 45% 55%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: var(--font-public-sans), system-ui, -apple-system, sans-serif;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: var(--font-fraunces), Georgia, serif;
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-navy-dark: var(--brand-navy-dark);
+  --color-brand-navy-deep: var(--brand-navy-deep);
+  --color-brand-navy-soft: var(--brand-navy-soft);
+
+  --color-brand-mint: var(--brand-mint);
+  --color-brand-mint-light: var(--brand-mint-light);
+  --color-brand-mint-soft: var(--brand-mint-soft);
+
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-gold-deep: var(--brand-gold-deep);
+  --color-brand-gold-soft: var(--brand-gold-soft);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-public-sans);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}

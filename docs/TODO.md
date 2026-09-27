@@ -11,21 +11,20 @@ on a Vercel preview before moving to the next.
 - [ ] Connect Vercel project + confirm preview deployments work
 - [ ] Set up Postgres (Neon/Supabase) + a skeleton Drizzle schema
 
-## Phase 1 — Marketing / landing page
-- [x] Build the landing page (hero, program overview, "how it works," FAQ) following
-      `DESIGN_SYSTEM.md` — explicitly avoid the templated SaaS structure it warns about
-- [x] Add GSAP entrance/scroll animations (lightbulb glow, stat count-up)
-- [x] Full responsive pass (mobile-first — many students will visit from phones)
+## Phase 1 — Public landing page (Minimalist Gateway)
+- [x] Build minimal single-viewport landing page (logo, one-sentence mission, Login button)
+- [x] Apply DESIGN_SYSTEM.md tokens (Navy/Mint/Gold/Cream, Fraunces + Public Sans) without scrolling
+- [x] Remove heavy course-specific bloat (dashboard mockup, weekly timeline, curriculum, FAQ) from public page
 
 ## Phase 2 — Auth & roles
 - [ ] Set up auth (Clerk or NextAuth)
 - [ ] Define roles: student, admin
 - [ ] Protect `/dashboard/*` routes by role
 
-## Phase 3 — Cohort / week data model
-- [ ] Schema: `Cohort`, `Week`, `Rubric`, `Submission`, `Assessment`, `Question`,
-      `Answer`, `Score`
-- [ ] Admin UI: create a cohort, create a week (title, brief, resource links, deadline)
+## Phase 3 — Cohort / week data model & publishing gate
+- [ ] Schema: `Cohort`, `Week` (with `published: boolean`, default `false`), `Rubric`, `Submission`, `Assessment`, `Question`, `Answer`, `Score`
+- [ ] Enforce student query filtering: strictly query `published = true` (unpublished weeks never appear, no placeholders)
+- [ ] Admin UI: create/publish cohort and weeks (title, brief, resource links, deadline, published toggle)
 - [ ] Seed the current Data Analysis cohort (4 weeks; Week 1 = AfriMart dataset)
 
 ## Phase 4 — Student submission flow

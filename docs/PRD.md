@@ -31,13 +31,11 @@ future cohort/course can be spun up on without rebuilding anything.
 
 ## 5. Core features (v1)
 
-**5.1 Public landing page** — what Project Builders is, current/past cohorts, FAQ.
+**5.1 Public landing page** — minimalist, single-viewport entry point with zero scrolling required: the official logo, one short sentence describing Project Builders ("Build Real Experience" / practical cohort courses), and a direct Login button. All curriculum and specific course artifacts remain behind authentication.
 
 **5.2 Auth** — student sign-in (email magic link or Google); admin role gate.
 
-**5.3 Cohort / Week structure** — Admin creates a Cohort (e.g. "Data Analysis — Sept
-2026"). Each cohort has Weeks/Projects, each with: brief, resource links (dataset,
-slides/PDF), rubric, a submission form, and a checkpoint assessment.
+**5.3 Cohort / Week structure** — Admin creates a Cohort (e.g. "Data Analysis — Sept 2026"). Each cohort has Weeks/Projects, each with: brief, resource links (dataset, slides/PDF), rubric, a submission form, a checkpoint assessment, and a `published` boolean flag (default `false`). Students strictly see only published weeks; unpublished weeks are excluded at query time.
 
 **5.4 Submission flow** — student pastes a GitHub repo URL + a short written reflection
 (their 3 findings). System validates the URL is reachable and well-formed, timestamps
@@ -86,3 +84,8 @@ see the existing course FAQ).
   this cohort size. See `SETUP.md` for the exact free-tier stack and account list.
 - No AI grading — all scoring is deterministic (multiple-choice, pre-defined correct
   answers), not model-based.
+
+## 9. Content Visibility & Publishing Rules
+- **Week Publication Gate**: Each week model contains a `published` boolean field, defaulting to `false`.
+- **Query-Level Filtering**: Any query returning weeks to students MUST filter to published weeks only (`WHERE published = true`).
+- **Zero Placeholders**: Unpublished weeks must NOT appear anywhere in the student-facing experience — not as locked cards, disabled rows, or "coming soon" placeholders. If a week is not published, it does not exist for the student.

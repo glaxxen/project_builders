@@ -12,10 +12,10 @@ on a Vercel preview before moving to the next.
 - [ ] Set up Postgres (Neon/Supabase) + a skeleton Drizzle schema
 
 ## Phase 1 — Marketing / landing page
-- [ ] Build the landing page (hero, program overview, "how it works," FAQ) following
+- [x] Build the landing page (hero, program overview, "how it works," FAQ) following
       `DESIGN_SYSTEM.md` — explicitly avoid the templated SaaS structure it warns about
-- [ ] Add GSAP entrance/scroll animations (lightbulb glow, stat count-up)
-- [ ] Full responsive pass (mobile-first — many students will visit from phones)
+- [x] Add GSAP entrance/scroll animations (lightbulb glow, stat count-up)
+- [x] Full responsive pass (mobile-first — many students will visit from phones)
 
 ## Phase 2 — Auth & roles
 - [ ] Set up auth (Clerk or NextAuth)

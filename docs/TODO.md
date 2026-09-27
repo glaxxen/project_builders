@@ -17,9 +17,9 @@ on a Vercel preview before moving to the next.
 - [x] Remove heavy course-specific bloat (dashboard mockup, weekly timeline, curriculum, FAQ) from public page
 
 ## Phase 2 — Auth & roles
-- [ ] Set up auth (Clerk or NextAuth)
-- [ ] Define roles: student, admin
-- [ ] Protect `/dashboard/*` routes by role
+- [x] Set up auth (NextAuth / Auth.js v5 with Resend magic links)
+- [x] Define roles: student (default), admin (matched against ADMIN_EMAILS)
+- [x] Protect `/dashboard/*` routes by role (students -> /dashboard/student, admins -> /dashboard/admin, bidirectional redirection)
 
 ## Phase 3 — Cohort / week data model & publishing gate
 - [ ] Schema: `Cohort`, `Week` (with `published: boolean`, default `false`), `Rubric`, `Submission`, `Assessment`, `Question`, `Answer`, `Score`

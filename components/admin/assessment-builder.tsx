@@ -50,7 +50,7 @@ export function AssessmentBuilder({ assessments }: AssessmentBuilderProps) {
   const [prompt, setPrompt] = useState("");
   const [points, setPoints] = useState(20);
   const [correctIndex, setCorrectIndex] = useState(0);
-  const [options, setOptions] = useState([
+  const [options, setOptions] = useState<Array<{ text: string; explanation: string }>>([
     { text: "", explanation: "" },
     { text: "", explanation: "" },
     { text: "", explanation: "" },
@@ -58,19 +58,15 @@ export function AssessmentBuilder({ assessments }: AssessmentBuilderProps) {
   ]);
 
   const handleOptionTextChange = (index: number, text: string) => {
-    setOptions((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], text };
-      return copy;
-    });
+    setOptions((prev) =>
+      prev.map((opt, i) => (i === index ? { ...opt, text } : opt))
+    );
   };
 
   const handleOptionExplanationChange = (index: number, explanation: string) => {
-    setOptions((prev) => {
-      const copy = [...prev];
-      copy[index] = { ...copy[index], explanation };
-      return copy;
-    });
+    setOptions((prev) =>
+      prev.map((opt, i) => (i === index ? { ...opt, explanation } : opt))
+    );
   };
 
   const handleCreateQuestion = (e: React.FormEvent) => {

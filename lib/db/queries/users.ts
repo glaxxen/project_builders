@@ -47,29 +47,40 @@ export async function ensureUserExists(data: {
     name: data.name || cleanEmail.split("@")[0],
     role: data.role || "student",
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
   };
 
   if (shouldUseRest()) {
     const inserted = await restInsert<User[]>("user", newUser);
-    return inserted?.[0] || (newUser as any);
+    if (inserted?.[0]) return inserted[0];
   }
 
   try {
     const [created] = await db
       .insert(users)
       .values({
-        ...newUser,
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        role: newUser.role,
         createdAt: new Date(),
-        updatedAt: new Date(),
       })
       .returning();
-    return created;
+    if (created) return created;
   } catch (err) {
     console.warn("Direct DB user insert failed, falling back to REST:", err);
     const inserted = await restInsert<User[]>("user", newUser);
-    return inserted?.[0] || (newUser as any);
+    if (inserted?.[0]) return inserted[0];
   }
+
+  return {
+    id: newUser.id,
+    email: newUser.email,
+    name: newUser.name ?? null,
+    role: newUser.role,
+    image: null,
+    emailVerified: null,
+    createdAt: new Date(),
+  };
 }
 
 export async function updateUserName(emailOrId: string, newName: string): Promise<User | null> {
@@ -82,7 +93,6 @@ export async function updateUserName(emailOrId: string, newName: string): Promis
       : `id=eq.${encodeURIComponent(emailOrId)}`;
     const updated = await restUpdate<User[]>("user", filter, {
       name: trimmed,
-      updatedAt: new Date().toISOString(),
     });
     return updated?.[0] || null;
   }
@@ -93,7 +103,7 @@ export async function updateUserName(emailOrId: string, newName: string): Promis
       : eq(users.id, emailOrId);
     const [updated] = await db
       .update(users)
-      .set({ name: trimmed, updatedAt: new Date() })
+      .set({ name: trimmed })
       .where(condition)
       .returning();
     return updated || null;
@@ -104,7 +114,6 @@ export async function updateUserName(emailOrId: string, newName: string): Promis
       : `id=eq.${encodeURIComponent(emailOrId)}`;
     const updated = await restUpdate<User[]>("user", filter, {
       name: trimmed,
-      updatedAt: new Date().toISOString(),
     });
     return updated?.[0] || null;
   }

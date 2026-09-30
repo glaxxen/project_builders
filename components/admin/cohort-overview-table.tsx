@@ -11,7 +11,7 @@ import {
   DownloadSimple,
   Eye,
   FileText,
-  Filter,
+  Funnel,
   GithubLogo,
   MagnifyingGlass,
   Sparkle,
@@ -300,7 +300,7 @@ export function CohortOverviewTable({ students, weeks }: CohortOverviewTableProp
                               <span className="text-[#A0AEC0]">-</span>
                             )}
 
-                            {score !== null ? (
+                            {score !== null && score !== undefined ? (
                               <span
                                 className={`font-semibold ${
                                   score >= 70 ? "text-[#1E4D40]" : "text-red-600"
@@ -443,7 +443,7 @@ export function CohortOverviewTable({ students, weeks }: CohortOverviewTableProp
                           </span>
                         </div>
 
-                        {score !== null ? (
+                        {score !== null && score !== undefined ? (
                           <span
                             className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-full ${
                               score >= 70

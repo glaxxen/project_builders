@@ -152,7 +152,7 @@ export async function getAdminCohortOverview(cohortId: string) {
 
     return {
       studentId: student.id,
-      name: student.name || student.email.split("@")[0],
+      name: student.name || (student.email ? student.email.split("@")[0] : "") || "Student",
       email: student.email,
       submissionsByWeek,
       scoresByWeek,

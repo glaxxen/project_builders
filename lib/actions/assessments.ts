@@ -7,6 +7,9 @@ import {
   recordStudentScore,
 } from "@/lib/db/queries/assessments";
 import { ensureUserExists } from "@/lib/db/queries/users";
+import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
+import { shouldUseRest, restGet, restInsert } from "@/lib/db/rest-fallback";
 import { revalidatePath } from "next/cache";
 
 export interface GradeResult {
@@ -124,12 +127,19 @@ export async function createQuestionAction(data: {
 
   const { questions, options: optionsTable } = await import("@/lib/db/schema");
 
-  const existingQuestions = await db
-    .select({ orderNumber: questions.orderNumber })
-    .from(questions)
-    .where(eq(questions.assessmentId, data.assessmentId));
+  let existingCount = 0;
+  if (shouldUseRest()) {
+    const list = await restGet<any[]>("question", `assessmentId=eq.${data.assessmentId}&select=orderNumber`);
+    existingCount = list?.length || 0;
+  } else {
+    const existingQuestions = await db
+      .select({ orderNumber: questions.orderNumber })
+      .from(questions)
+      .where(eq(questions.assessmentId, data.assessmentId));
+    existingCount = existingQuestions.length;
+  }
 
-  const nextOrderNumber = existingQuestions.length + 1;
+  const nextOrderNumber = existingCount + 1;
   const questionId = `q-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
   // Generate option IDs
@@ -141,21 +151,35 @@ export async function createQuestionAction(data: {
   }));
 
   const correctOptionId =
-    optionRecords[data.correctOptionIndex]?.id || optionRecords[0].id;
+    optionRecords[data.correctOptionIndex]?.id || optionRecords[0]?.id || "opt-1";
 
-  // Insert Question
-  await db.insert(questions).values({
-    id: questionId,
-    assessmentId: data.assessmentId,
-    orderNumber: nextOrderNumber,
-    prompt: data.prompt.trim(),
-    correctOptionId,
-    points: data.points || 10,
-  });
+  if (shouldUseRest()) {
+    await restInsert("question", {
+      id: questionId,
+      assessmentId: data.assessmentId,
+      orderNumber: nextOrderNumber,
+      prompt: data.prompt.trim(),
+      correctOptionId,
+      points: data.points || 10,
+    });
+    for (const optRec of optionRecords) {
+      await restInsert("option", optRec);
+    }
+  } else {
+    // Insert Question
+    await db.insert(questions).values({
+      id: questionId,
+      assessmentId: data.assessmentId,
+      orderNumber: nextOrderNumber,
+      prompt: data.prompt.trim(),
+      correctOptionId,
+      points: data.points || 10,
+    });
 
-  // Insert Options
-  for (const optRec of optionRecords) {
-    await db.insert(optionsTable).values(optRec);
+    // Insert Options
+    for (const optRec of optionRecords) {
+      await db.insert(optionsTable).values(optRec);
+    }
   }
 
   revalidatePath("/dashboard/admin");

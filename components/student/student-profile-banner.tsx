@@ -55,7 +55,7 @@ export function StudentProfileBanner({
 
         <button
           onClick={() => {
-            setName(savedName);
+            setName(savedName || "");
             setIsOpen(true);
           }}
           className="inline-flex items-center gap-1 text-[11px] font-mono text-[#7E8B9B] hover:text-[#102038] transition-colors cursor-pointer"

@@ -6,12 +6,23 @@ const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
   display: "swap",
+  fallback: ["Georgia", "Cambria", "Times New Roman", "serif"],
 });
 
 const publicSans = Public_Sans({
   variable: "--font-public-sans",
   subsets: ["latin"],
   display: "swap",
+  fallback: [
+    "system-ui",
+    "-apple-system",
+    "BlinkMacSystemFont",
+    "Segoe UI",
+    "Roboto",
+    "Helvetica Neue",
+    "Arial",
+    "sans-serif",
+  ],
 });
 
 export const metadata: Metadata = {

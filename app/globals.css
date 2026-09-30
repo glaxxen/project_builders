@@ -137,8 +137,8 @@
   --color-brand-gold-deep: var(--brand-gold-deep);
   --color-brand-gold-soft: var(--brand-gold-soft);
 
-  --font-display: var(--font-fraunces);
-  --font-sans: var(--font-public-sans);
+  --font-display: var(--font-fraunces), Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: var(--font-public-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

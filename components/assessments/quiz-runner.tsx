@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useEffect, useTransition } from "react";
 import Link from "next/link";
+import { motion, animate } from "framer-motion";
 import type { AssessmentWithQuestions } from "@/lib/db/queries/assessments";
 import { submitAssessmentAction, type GradeResult } from "@/lib/actions/assessments";
 import {
@@ -137,51 +138,9 @@ export function QuizRunner({ assessment, existingScore }: QuizRunnerProps) {
         )}
       </div>
 
-      {/* Graded Result Card (Shown immediately upon submission) */}
+      {/* Graded Result Card (Framer Motion Score Reveal & Count-Up Animation) */}
       {result && (
-        <div className="bg-[#FFFFFF] border-2 border-[#102038] rounded-2xl p-6 sm:p-8 shadow-xl space-y-6 animate-in fade-in zoom-in-95 duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8E2D6] pb-6">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                {result.passed ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#EBF7F4] text-[#1E4D40] border border-[#77CBB3]">
-                    <CheckCircle size={14} weight="fill" />
-                    <span>PASSED BENCHMARK</span>
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-red-50 text-red-700 border border-red-200">
-                    <WarningCircle size={14} weight="bold" />
-                    <span>BELOW BENCHMARK ({result.passingScore}% REQUIRED)</span>
-                  </span>
-                )}
-              </div>
-              <h2 className="font-display text-2xl font-bold text-[#102038]">
-                Assessment Evaluation
-              </h2>
-            </div>
-
-            <div className="text-right">
-              <div className="text-4xl font-display font-bold text-[#102038]">
-                {result.scorePercentage}%
-              </div>
-              <div className="text-xs font-mono text-[#7E8B9B]">
-                {result.correctCount} of {result.totalQuestions} questions correct
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-[#7E8B9B]">Deterministic Grade &bull; Saved to Record</span>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#E8E2D6] bg-[#FAF8F3] hover:bg-[#E8E2D6] text-[#102038] font-sans font-semibold transition-colors cursor-pointer"
-            >
-              <Printer size={14} weight="bold" />
-              <span>Print / Save PDF Report</span>
-            </button>
-          </div>
-        </div>
+        <QuizScoreRevealCard result={result} />
       )}
 
       {errorMsg && (
@@ -335,5 +294,85 @@ export function QuizRunner({ assessment, existingScore }: QuizRunnerProps) {
         )}
       </form>
     </div>
+  );
+}
+
+/**
+ * The ONE deliberate Framer Motion animation moment in the application:
+ * Quiz Score Reveal & Count-Up Number upon submission.
+ */
+function QuizScoreRevealCard({ result }: { result: GradeResult }) {
+  const [displayCount, setDisplayCount] = useState(0);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (prefersReducedMotion) {
+      setDisplayCount(result.scorePercentage);
+      return;
+    }
+
+    const controls = animate(0, result.scorePercentage, {
+      duration: 1.4,
+      ease: [0.16, 1, 0.3, 1], // easeOutExpo
+      onUpdate: (latest) => setDisplayCount(Math.round(latest)),
+    });
+
+    return () => controls.stop();
+  }, [result.scorePercentage]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      className="bg-[#FFFFFF] border-2 border-[#102038] rounded-2xl p-6 sm:p-8 shadow-xl space-y-6"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E8E2D6] pb-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            {result.passed ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#EBF7F4] text-[#1E4D40] border border-[#77CBB3]">
+                <CheckCircle size={14} weight="fill" />
+                <span>PASSED BENCHMARK</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold bg-red-50 text-red-700 border border-red-200">
+                <WarningCircle size={14} weight="bold" />
+                <span>BELOW BENCHMARK ({result.passingScore}% REQUIRED)</span>
+              </span>
+            )}
+          </div>
+          <h2 className="font-display text-2xl font-bold text-[#102038]">
+            Assessment Evaluation
+          </h2>
+        </div>
+
+        <div className="text-right">
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.35 }}
+            className="text-4xl font-display font-bold text-[#102038]"
+          >
+            {displayCount}%
+          </motion.div>
+          <div className="text-xs font-mono text-[#7E8B9B]">
+            {result.correctCount} of {result.totalQuestions} questions correct
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-xs font-mono">
+        <span className="text-[#7E8B9B]">Deterministic Grade &bull; Saved to Record</span>
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-[#E8E2D6] bg-[#FAF8F3] hover:bg-[#E8E2D6] text-[#102038] font-sans font-semibold transition-colors cursor-pointer"
+        >
+          <Printer size={14} weight="bold" />
+          <span>Print / Save PDF Report</span>
+        </button>
+      </div>
+    </motion.div>
   );
 }

@@ -1,8 +1,4 @@
-"use client";
-
-import { useEffect, useRef } from "react";
 import Link from "next/link";
-import gsap from "gsap";
 import { 
   Lightbulb, 
   ArrowRight, 
@@ -15,62 +11,16 @@ import {
 import { DashboardMockup } from "./dashboard-mockup";
 
 export function Hero() {
-  const lightbulbRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-  const heroTextRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Check prefers-reduced-motion
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) return;
-
-    const ctx = gsap.context(() => {
-      // Lightbulb glow pulse animation
-      const tl = gsap.timeline({ repeat: -1, yoyo: true });
-      tl.to(lightbulbRef.current, {
-        color: "#E5A93C",
-        scale: 1.1,
-        duration: 1.2,
-        ease: "power2.inOut",
-      });
-
-      // Discrete concentric ring expansion without blur
-      gsap.to(ringRef.current, {
-        scale: 1.4,
-        opacity: 0,
-        duration: 2.2,
-        repeat: -1,
-        ease: "power1.out",
-      });
-
-      // Staggered entrance for hero typography
-      gsap.from(".hero-reveal", {
-        y: 18,
-        opacity: 0,
-        stagger: 0.12,
-        duration: 0.8,
-        ease: "power3.out",
-      });
-    });
-
-    return () => ctx.revert();
-  }, []);
 
   return (
     <section className="relative bg-[#FAF8F3] pt-10 pb-16 lg:pt-14 lg:pb-24 border-b border-[#E8E2D6] px-4 lg:px-8 overflow-hidden">
       <div className="max-w-7xl mx-auto space-y-10 lg:space-y-12">
         {/* Editorial Top Lockup */}
-        <div ref={heroTextRef} className="max-w-4xl mx-auto text-center space-y-5">
-          {/* Animated Brand Crest Badge with GSAP Lightbulb */}
-          <div className="hero-reveal inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E8E2D6] text-xs font-sans text-[#102038] shadow-[0_1px_3px_rgba(16,32,56,0.04)]">
-            <div className="relative flex items-center justify-center">
-              <div 
-                ref={ringRef} 
-                className="absolute inset-0 rounded-full border border-[#C8A55B] pointer-events-none" 
-              />
-              <div ref={lightbulbRef} className="text-[#C8A55B] transition-transform">
-                <Lightbulb size={18} weight="fill" />
-              </div>
+        <div className="max-w-4xl mx-auto text-center space-y-5">
+          {/* Brand Crest Badge */}
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-[#FFFFFF] border border-[#E8E2D6] text-xs font-sans text-[#102038] shadow-[0_1px_3px_rgba(16,32,56,0.04)]">
+            <div className="relative flex items-center justify-center text-[#C8A55B]">
+              <Lightbulb size={18} weight="fill" />
             </div>
             <span className="font-semibold text-[#102038]">Project Builders</span>
             <span className="text-[#DCD5C5]">|</span>

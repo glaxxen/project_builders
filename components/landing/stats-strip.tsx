@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import gsap from "gsap";
+import { useEffect, useRef, useState } from "react";
 import { Users, FileCode, CheckSquareOffset, Trophy } from "@phosphor-icons/react";
 
 interface StatItem {
@@ -50,37 +49,46 @@ const STATS: StatItem[] = [
 
 export function StatsStrip() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const countersRef = useRef<Record<string, HTMLSpanElement | null>>({});
+  const [counts, setCounts] = useState<Record<string, number>>(() =>
+    STATS.reduce((acc, s) => ({ ...acc, [s.id]: 0 }), {})
+  );
+  const animatedRef = useRef(false);
 
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     if (prefersReducedMotion) {
-      STATS.forEach((s) => {
-        const el = countersRef.current[s.id];
-        if (el) el.innerText = `${s.target}${s.suffix}`;
-      });
+      setCounts(STATS.reduce((acc, s) => ({ ...acc, [s.id]: s.target }), {}));
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            STATS.forEach((stat) => {
-              const el = countersRef.current[stat.id];
-              if (!el) return;
+          if (entry.isIntersecting && !animatedRef.current) {
+            animatedRef.current = true;
+            const startTime = performance.now();
+            const duration = 1600;
 
-              const counterObj = { val: 0 };
-              gsap.to(counterObj, {
-                val: stat.target,
-                duration: 1.8,
-                ease: "power2.out",
-                onUpdate: () => {
-                  el.innerText = `${Math.floor(counterObj.val)}${stat.suffix}`;
-                },
-              });
-            });
+            const step = (now: number) => {
+              const elapsed = now - startTime;
+              const progress = Math.min(elapsed / duration, 1);
+              // Ease-out quad
+              const eased = 1 - (1 - progress) * (1 - progress);
+
+              setCounts(
+                STATS.reduce((acc, s) => ({
+                  ...acc,
+                  [s.id]: Math.round(eased * s.target),
+                }), {})
+              );
+
+              if (progress < 1) {
+                requestAnimationFrame(step);
+              }
+            };
+
+            requestAnimationFrame(step);
             observer.disconnect();
           }
         });
@@ -111,8 +119,9 @@ export function StatsStrip() {
                     <IconComponent size={22} weight="duotone" />
                   </div>
                   <div className="font-display text-3xl sm:text-4xl font-bold text-[#102038] tracking-tight">
-                    <span ref={(el) => { countersRef.current[s.id] = el; }}>
-                      0{s.suffix}
+                    <span>
+                      {counts[s.id] ?? s.target}
+                      {s.suffix}
                     </span>
                   </div>
                   <div className="mt-1 font-sans font-semibold text-sm text-[#102038]">

@@ -1,45 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import gsap from "gsap";
-import { ArrowRight, SignIn, Sparkle } from "@phosphor-icons/react";
+import { ArrowRight } from "@phosphor-icons/react";
 
 export default function HomePage() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const logoRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (prefersReducedMotion) return;
-
-    const ctx = gsap.context(() => {
-      // Gentle entrance reveal
-      gsap.from(".entry-element", {
-        y: 16,
-        opacity: 0,
-        stagger: 0.1,
-        duration: 0.8,
-        ease: "power2.out",
-      });
-
-      // Subtle breath on logo crest border
-      gsap.to(logoRef.current, {
-        borderColor: "#BA9C60",
-        duration: 2.4,
-        repeat: -1,
-        yoyo: true,
-        ease: "power1.inOut",
-      });
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
 
   return (
     <div
-      ref={containerRef}
       className="h-screen w-screen overflow-hidden bg-[#FAF8F3] text-[#102038] flex flex-col justify-between p-6 sm:p-10 lg:p-14 select-none"
     >
       {/* Top Header Micro-Bar */}
@@ -60,7 +28,6 @@ export default function HomePage() {
       <main className="w-full max-w-xl mx-auto flex flex-col items-center text-center space-y-7 my-auto">
         {/* Master Insignia Crest */}
         <div
-          ref={logoRef}
           className="entry-element relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-[#FFFFFF] border-2 border-[#E8E2D6] p-3 shadow-[0_2px_12px_rgba(16,32,56,0.06)] flex items-center justify-center transition-colors"
         >
           <Image

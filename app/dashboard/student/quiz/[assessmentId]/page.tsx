@@ -6,10 +6,9 @@ import {
   getStudentAssessmentData,
   getStudentScore,
   getAllScoresForStudent,
+  getAllAssessments,
 } from "@/lib/db/queries/assessments";
-import { db } from "@/lib/db";
-import { users, assessments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { getUserByEmail } from "@/lib/db/queries/users";
 import { QuizRunner } from "@/components/assessments/quiz-runner";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { ArrowLeft, Lock, ShieldCheck, Sparkle } from "@phosphor-icons/react/dist/ssr";
@@ -32,9 +31,7 @@ export default async function StudentQuizPage({ params }: QuizPageProps) {
 
   // 1. Fetch student user record
   const studentEmail = session.user.email.toLowerCase().trim();
-  const userRecord = (
-    await db.select().from(users).where(eq(users.email, studentEmail)).limit(1)
-  )[0];
+  const userRecord = await getUserByEmail(studentEmail);
 
   // 2. Fetch assessment and questions (securely, no correct answers leaked)
   const assessmentData = await getStudentAssessmentData(assessmentId);
@@ -52,10 +49,8 @@ export default async function StudentQuizPage({ params }: QuizPageProps) {
   let isGated = false;
   if (assessmentData.isFinal && userRecord) {
     const studentScores = await getAllScoresForStudent(userRecord.id);
-    const nonFinalAssessments = await db
-      .select({ id: assessments.id })
-      .from(assessments)
-      .where(eq(assessments.isFinal, false));
+    const allCohortAssessments = await getAllAssessments();
+    const nonFinalAssessments = allCohortAssessments.filter((a) => !a.isFinal);
 
     const completedNonFinalCount = studentScores.filter((s) =>
       nonFinalAssessments.some((nfa) => nfa.id === s.assessmentId)

@@ -1,6 +1,12 @@
 import { db } from "../index";
-import { assessments, questions, options, scores, type Assessment, type Score } from "../schema";
+import { assessments, questions, options, scores, type Assessment, type Score, type Question, type Option } from "../schema";
 import { eq, and, asc, desc } from "drizzle-orm";
+import {
+  shouldUseRest,
+  restGet,
+  restInsert,
+  restUpdate,
+} from "../rest-fallback";
 
 export interface QuestionWithOptions {
   id: string;
@@ -18,9 +24,32 @@ export interface AssessmentWithQuestions extends Assessment {
 }
 
 /**
+ * Fetch all assessments configured in the system.
+ */
+export async function getAllAssessments(): Promise<Assessment[]> {
+  if (shouldUseRest()) {
+    const list = await restGet<Assessment[]>("assessment", "order=createdAt.asc");
+    return list || [];
+  }
+
+  try {
+    return await db.select().from(assessments);
+  } catch (error) {
+    console.warn("Direct DB assessment list failed, falling back to REST:", error);
+    const list = await restGet<Assessment[]>("assessment", "order=createdAt.asc");
+    return list || [];
+  }
+}
+
+/**
  * Fetch the assessment configured for a specific week.
  */
 export async function getAssessmentForWeek(weekId: string): Promise<Assessment | null> {
+  if (shouldUseRest()) {
+    const list = await restGet<Assessment[]>("assessment", `weekId=eq.${weekId}&limit=1`);
+    return list?.[0] || null;
+  }
+
   try {
     const result = await db
       .select()
@@ -30,8 +59,9 @@ export async function getAssessmentForWeek(weekId: string): Promise<Assessment |
 
     return result[0] || null;
   } catch (error) {
-    console.error("Error fetching assessment for week:", error);
-    return null;
+    console.warn("Direct DB getAssessmentForWeek failed, falling back to REST:", error);
+    const list = await restGet<Assessment[]>("assessment", `weekId=eq.${weekId}&limit=1`);
+    return list?.[0] || null;
   }
 }
 
@@ -39,6 +69,11 @@ export async function getAssessmentForWeek(weekId: string): Promise<Assessment |
  * Fetch assessment by ID.
  */
 export async function getAssessmentById(assessmentId: string): Promise<Assessment | null> {
+  if (shouldUseRest()) {
+    const list = await restGet<Assessment[]>("assessment", `id=eq.${assessmentId}&limit=1`);
+    return list?.[0] || null;
+  }
+
   try {
     const result = await db
       .select()
@@ -48,8 +83,9 @@ export async function getAssessmentById(assessmentId: string): Promise<Assessmen
 
     return result[0] || null;
   } catch (error) {
-    console.error("Error fetching assessment by ID:", error);
-    return null;
+    console.warn("Direct DB getAssessmentById failed, falling back to REST:", error);
+    const list = await restGet<Assessment[]>("assessment", `id=eq.${assessmentId}&limit=1`);
+    return list?.[0] || null;
   }
 }
 
@@ -60,10 +96,45 @@ export async function getAssessmentById(assessmentId: string): Promise<Assessmen
 export async function getStudentAssessmentData(
   assessmentId: string
 ): Promise<AssessmentWithQuestions | null> {
-  try {
-    const assessment = await getAssessmentById(assessmentId);
-    if (!assessment) return null;
+  const assessment = await getAssessmentById(assessmentId);
+  if (!assessment) return null;
 
+  if (shouldUseRest()) {
+    const questionList =
+      (await restGet<Question[]>(
+        "question",
+        `assessmentId=eq.${assessmentId}&select=id,orderNumber,prompt,points&order=orderNumber.asc`
+      )) || [];
+
+    if (questionList.length === 0) {
+      return { ...assessment, questions: [] };
+    }
+
+    // Fetch options for all questions
+    const qIds = questionList.map((q) => `"${q.id}"`).join(",");
+    const allOptions =
+      (await restGet<Option[]>(
+        "option",
+        `questionId=in.(${qIds})&select=id,questionId,text&order=id.asc`
+      )) || [];
+
+    const questionsWithOptions: QuestionWithOptions[] = questionList.map((q) => ({
+      id: q.id,
+      orderNumber: q.orderNumber,
+      prompt: q.prompt,
+      points: q.points,
+      options: allOptions
+        .filter((opt) => opt.questionId === q.id)
+        .map((opt) => ({ id: opt.id, text: opt.text })),
+    }));
+
+    return {
+      ...assessment,
+      questions: questionsWithOptions,
+    };
+  }
+
+  try {
     const questionList = await db
       .select({
         id: questions.id,
@@ -97,8 +168,34 @@ export async function getStudentAssessmentData(
       questions: questionsWithOptions,
     };
   } catch (error) {
-    console.error("Error fetching student assessment data:", error);
-    return null;
+    console.warn("Direct DB getStudentAssessmentData failed, falling back to REST:", error);
+    const questionList =
+      (await restGet<Question[]>(
+        "question",
+        `assessmentId=eq.${assessmentId}&select=id,orderNumber,prompt,points&order=orderNumber.asc`
+      )) || [];
+
+    const qIds = questionList.map((q) => `"${q.id}"`).join(",");
+    const allOptions =
+      (await restGet<Option[]>(
+        "option",
+        `questionId=in.(${qIds})&select=id,questionId,text&order=id.asc`
+      )) || [];
+
+    const questionsWithOptions: QuestionWithOptions[] = questionList.map((q) => ({
+      id: q.id,
+      orderNumber: q.orderNumber,
+      prompt: q.prompt,
+      points: q.points,
+      options: allOptions
+        .filter((opt) => opt.questionId === q.id)
+        .map((opt) => ({ id: opt.id, text: opt.text })),
+    }));
+
+    return {
+      ...assessment,
+      questions: questionsWithOptions,
+    };
   }
 }
 
@@ -106,6 +203,38 @@ export async function getStudentAssessmentData(
  * Server-only: Fetch full questions with correctOptionId for deterministic auto-grading.
  */
 export async function getGradingKey(assessmentId: string) {
+  if (shouldUseRest()) {
+    const questionList =
+      (await restGet<Question[]>(
+        "question",
+        `assessmentId=eq.${assessmentId}&order=orderNumber.asc`
+      )) || [];
+
+    if (questionList.length === 0) return [];
+
+    const qIds = questionList.map((q) => `"${q.id}"`).join(",");
+    const allOptions =
+      (await restGet<Option[]>(
+        "option",
+        `questionId=in.(${qIds})&order=id.asc`
+      )) || [];
+
+    return questionList.map((q) => ({
+      id: q.id,
+      orderNumber: q.orderNumber,
+      prompt: q.prompt,
+      correctOptionId: q.correctOptionId,
+      points: q.points,
+      options: allOptions
+        .filter((opt) => opt.questionId === q.id)
+        .map((opt) => ({
+          id: opt.id,
+          text: opt.text,
+          explanation: opt.explanation,
+        })),
+    }));
+  }
+
   try {
     const questionList = await db
       .select({
@@ -138,8 +267,34 @@ export async function getGradingKey(assessmentId: string) {
 
     return fullQuestions;
   } catch (error) {
-    console.error("Error fetching grading key:", error);
-    return [];
+    console.warn("Direct DB getGradingKey failed, falling back to REST:", error);
+    const questionList =
+      (await restGet<Question[]>(
+        "question",
+        `assessmentId=eq.${assessmentId}&order=orderNumber.asc`
+      )) || [];
+
+    const qIds = questionList.map((q) => `"${q.id}"`).join(",");
+    const allOptions =
+      (await restGet<Option[]>(
+        "option",
+        `questionId=in.(${qIds})&order=id.asc`
+      )) || [];
+
+    return questionList.map((q) => ({
+      id: q.id,
+      orderNumber: q.orderNumber,
+      prompt: q.prompt,
+      correctOptionId: q.correctOptionId,
+      points: q.points,
+      options: allOptions
+        .filter((opt) => opt.questionId === q.id)
+        .map((opt) => ({
+          id: opt.id,
+          text: opt.text,
+          explanation: opt.explanation,
+        })),
+    }));
   }
 }
 
@@ -150,6 +305,14 @@ export async function getStudentScore(
   studentId: string,
   assessmentId: string
 ): Promise<Score | null> {
+  if (shouldUseRest()) {
+    const list = await restGet<Score[]>(
+      "score",
+      `studentId=eq.${studentId}&assessmentId=eq.${assessmentId}&limit=1`
+    );
+    return list?.[0] || null;
+  }
+
   try {
     const result = await db
       .select()
@@ -159,8 +322,12 @@ export async function getStudentScore(
 
     return result[0] || null;
   } catch (error) {
-    console.error("Error fetching student score:", error);
-    return null;
+    console.warn("Direct DB getStudentScore failed, falling back to REST:", error);
+    const list = await restGet<Score[]>(
+      "score",
+      `studentId=eq.${studentId}&assessmentId=eq.${assessmentId}&limit=1`
+    );
+    return list?.[0] || null;
   }
 }
 
@@ -168,6 +335,14 @@ export async function getStudentScore(
  * Get all scores for a student.
  */
 export async function getAllScoresForStudent(studentId: string): Promise<Score[]> {
+  if (shouldUseRest()) {
+    const list = await restGet<Score[]>(
+      "score",
+      `studentId=eq.${studentId}&order=completedAt.desc`
+    );
+    return list || [];
+  }
+
   try {
     return await db
       .select()
@@ -175,8 +350,12 @@ export async function getAllScoresForStudent(studentId: string): Promise<Score[]
       .where(eq(scores.studentId, studentId))
       .orderBy(desc(scores.completedAt));
   } catch (error) {
-    console.error("Error fetching all scores for student:", error);
-    return [];
+    console.warn("Direct DB getAllScoresForStudent failed, falling back to REST:", error);
+    const list = await restGet<Score[]>(
+      "score",
+      `studentId=eq.${studentId}&order=completedAt.desc`
+    );
+    return list || [];
   }
 }
 
@@ -189,9 +368,35 @@ export async function recordStudentScore(data: {
   scorePercentage: number;
   answersJson: string;
 }): Promise<Score | null> {
-  try {
-    const existing = await getStudentScore(data.studentId, data.assessmentId);
+  const existing = await getStudentScore(data.studentId, data.assessmentId);
 
+  if (shouldUseRest()) {
+    if (existing) {
+      const updated = await restUpdate<Score[]>(
+        "score",
+        `id=eq.${existing.id}`,
+        {
+          scorePercentage: data.scorePercentage,
+          answers: data.answersJson,
+          completedAt: new Date().toISOString(),
+        }
+      );
+      return updated?.[0] || null;
+    } else {
+      const id = `scr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      const created = await restInsert<Score[]>("score", {
+        id,
+        studentId: data.studentId,
+        assessmentId: data.assessmentId,
+        scorePercentage: data.scorePercentage,
+        answers: data.answersJson,
+        completedAt: new Date().toISOString(),
+      });
+      return created?.[0] || null;
+    }
+  }
+
+  try {
     if (existing) {
       const [updated] = await db
         .update(scores)
@@ -221,7 +426,29 @@ export async function recordStudentScore(data: {
       return created || null;
     }
   } catch (error) {
-    console.error("Error recording student score:", error);
-    return null;
+    console.warn("Direct DB recordStudentScore failed, falling back to REST:", error);
+    if (existing) {
+      const updated = await restUpdate<Score[]>(
+        "score",
+        `id=eq.${existing.id}`,
+        {
+          scorePercentage: data.scorePercentage,
+          answers: data.answersJson,
+          completedAt: new Date().toISOString(),
+        }
+      );
+      return updated?.[0] || null;
+    } else {
+      const id = `scr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      const created = await restInsert<Score[]>("score", {
+        id,
+        studentId: data.studentId,
+        assessmentId: data.assessmentId,
+        scorePercentage: data.scorePercentage,
+        answers: data.answersJson,
+        completedAt: new Date().toISOString(),
+      });
+      return created?.[0] || null;
+    }
   }
 }

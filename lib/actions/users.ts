@@ -1,9 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { updateUserName, ensureUserExists } from "@/lib/db/queries/users";
 import { revalidatePath } from "next/cache";
 
 export async function updateStudentNameAction(newName: string) {
@@ -19,26 +17,16 @@ export async function updateStudentNameAction(newName: string) {
 
   const userEmail = session.user.email.toLowerCase().trim();
 
-  // Find or create user
-  const existing = (
-    await db.select().from(users).where(eq(users.email, userEmail)).limit(1)
-  )[0];
+  // Ensure user exists first
+  await ensureUserExists({
+    id: session.user.id,
+    email: userEmail,
+    name: trimmed,
+    role: session.user.role,
+  });
 
-  if (existing) {
-    await db
-      .update(users)
-      .set({ name: trimmed })
-      .where(eq(users.id, existing.id));
-  } else {
-    const studentId = session.user.id || `usr-${Date.now().toString(36)}`;
-    await db.insert(users).values({
-      id: studentId,
-      email: userEmail,
-      name: trimmed,
-      role: session.user.role || "student",
-      createdAt: new Date(),
-    });
-  }
+  // Update their display name
+  await updateUserName(userEmail, trimmed);
 
   revalidatePath("/dashboard/student");
   revalidatePath("/dashboard/admin");

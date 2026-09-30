@@ -1,6 +1,12 @@
 import { db } from "../index";
 import { weeks, rubricItems, type Week, type NewWeek, type RubricItem } from "../schema";
 import { eq, and, asc } from "drizzle-orm";
+import {
+  shouldUseRest,
+  restGet,
+  restInsert,
+  restUpdate,
+} from "../rest-fallback";
 
 /**
  * CRITICAL PUBLISHING RULE (PRD Section 9 & TODO Phase 3):
@@ -10,6 +16,14 @@ import { eq, and, asc } from "drizzle-orm";
  * not even as a "coming soon" or disabled placeholder.
  */
 export async function getWeeksForStudent(cohortId: string): Promise<Week[]> {
+  if (shouldUseRest()) {
+    const data = await restGet<Week[]>(
+      "week",
+      `cohortId=eq.${cohortId}&published=eq.true&order=weekNumber.asc`
+    );
+    return data || [];
+  }
+
   try {
     return await db
       .select()
@@ -17,8 +31,12 @@ export async function getWeeksForStudent(cohortId: string): Promise<Week[]> {
       .where(and(eq(weeks.cohortId, cohortId), eq(weeks.published, true)))
       .orderBy(asc(weeks.weekNumber));
   } catch (error) {
-    console.error("Error fetching published weeks for student:", error);
-    return [];
+    console.warn("Direct DB query failed, falling back to Supabase HTTPS REST API...");
+    const restData = await restGet<Week[]>(
+      "week",
+      `cohortId=eq.${cohortId}&published=eq.true&order=weekNumber.asc`
+    );
+    return restData || [];
   }
 }
 
@@ -28,6 +46,14 @@ export async function getWeeksForStudent(cohortId: string): Promise<Week[]> {
  * route receives a 404 rather than displaying an unpublished brief.
  */
 export async function getPublishedWeekById(weekId: string): Promise<Week | null> {
+  if (shouldUseRest()) {
+    const data = await restGet<Week[]>(
+      "week",
+      `id=eq.${weekId}&published=eq.true&limit=1`
+    );
+    return data?.[0] || null;
+  }
+
   try {
     const result = await db
       .select()
@@ -37,8 +63,12 @@ export async function getPublishedWeekById(weekId: string): Promise<Week | null>
 
     return result[0] || null;
   } catch (error) {
-    console.error("Error fetching published week by id:", error);
-    return null;
+    console.warn("Direct DB query failed for week ID, falling back to HTTPS REST API...");
+    const restData = await restGet<Week[]>(
+      "week",
+      `id=eq.${weekId}&published=eq.true&limit=1`
+    );
+    return restData?.[0] || null;
   }
 }
 
@@ -47,6 +77,14 @@ export async function getPublishedWeekById(weekId: string): Promise<Week | null>
  * Intended exclusively for admin and instructor management routes.
  */
 export async function getAllWeeksForAdmin(cohortId: string): Promise<Week[]> {
+  if (shouldUseRest()) {
+    const data = await restGet<Week[]>(
+      "week",
+      `cohortId=eq.${cohortId}&order=weekNumber.asc`
+    );
+    return data || [];
+  }
+
   try {
     return await db
       .select()
@@ -54,8 +92,12 @@ export async function getAllWeeksForAdmin(cohortId: string): Promise<Week[]> {
       .where(eq(weeks.cohortId, cohortId))
       .orderBy(asc(weeks.weekNumber));
   } catch (error) {
-    console.error("Error fetching all weeks for admin:", error);
-    return [];
+    console.warn("Direct DB query failed for admin weeks, falling back to HTTPS REST API...");
+    const restData = await restGet<Week[]>(
+      "week",
+      `cohortId=eq.${cohortId}&order=weekNumber.asc`
+    );
+    return restData || [];
   }
 }
 
@@ -66,6 +108,15 @@ export async function setWeekPublishedStatus(
   weekId: string,
   published: boolean
 ): Promise<Week | null> {
+  if (shouldUseRest()) {
+    const updated = await restUpdate<Week[]>(
+      "week",
+      `id=eq.${weekId}`,
+      { published, updatedAt: new Date().toISOString() }
+    );
+    return updated?.[0] || null;
+  }
+
   try {
     const updated = await db
       .update(weeks)
@@ -75,8 +126,13 @@ export async function setWeekPublishedStatus(
 
     return updated[0] || null;
   } catch (error) {
-    console.error("Error updating week published status:", error);
-    return null;
+    console.warn("Direct DB update failed, falling back to REST:", error);
+    const updated = await restUpdate<Week[]>(
+      "week",
+      `id=eq.${weekId}`,
+      { published, updatedAt: new Date().toISOString() }
+    );
+    return updated?.[0] || null;
   }
 }
 
@@ -84,8 +140,20 @@ export async function setWeekPublishedStatus(
  * Admin mutation: Create a new week in a cohort.
  */
 export async function createWeek(data: Omit<NewWeek, "id" | "createdAt" | "updatedAt">): Promise<Week | null> {
+  const id = `week-${String(data.weekNumber).padStart(2, "0")}-${Date.now().toString(36)}`;
+  const record = {
+    ...data,
+    id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (shouldUseRest()) {
+    const created = await restInsert<Week[]>("week", record);
+    return created?.[0] || null;
+  }
+
   try {
-    const id = `week-${String(data.weekNumber).padStart(2, "0")}-${Date.now().toString(36)}`;
     const created = await db
       .insert(weeks)
       .values({
@@ -98,8 +166,9 @@ export async function createWeek(data: Omit<NewWeek, "id" | "createdAt" | "updat
 
     return created[0] || null;
   } catch (error) {
-    console.error("Error creating week:", error);
-    return null;
+    console.warn("Direct DB create failed, falling back to REST:", error);
+    const created = await restInsert<Week[]>("week", record);
+    return created?.[0] || null;
   }
 }
 
@@ -107,13 +176,19 @@ export async function createWeek(data: Omit<NewWeek, "id" | "createdAt" | "updat
  * Fetch rubric items for a given week.
  */
 export async function getRubricForWeek(weekId: string): Promise<RubricItem[]> {
+  if (shouldUseRest()) {
+    const data = await restGet<RubricItem[]>("rubricItem", `weekId=eq.${weekId}`);
+    return data || [];
+  }
+
   try {
     return await db
       .select()
       .from(rubricItems)
       .where(eq(rubricItems.weekId, weekId));
   } catch (error) {
-    console.error("Error fetching rubric for week:", error);
-    return [];
+    console.warn("Direct DB rubric query failed, falling back to REST:", error);
+    const data = await restGet<RubricItem[]>("rubricItem", `weekId=eq.${weekId}`);
+    return data || [];
   }
 }

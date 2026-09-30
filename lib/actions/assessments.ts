@@ -6,9 +6,7 @@ import {
   getGradingKey,
   recordStudentScore,
 } from "@/lib/db/queries/assessments";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { ensureUserExists } from "@/lib/db/queries/users";
 import { revalidatePath } from "next/cache";
 
 export interface GradeResult {
@@ -41,24 +39,12 @@ export async function submitAssessmentAction(
   const userEmail = session.user.email.toLowerCase().trim();
 
   // 1. Ensure user exists in database
-  let studentRecord = (
-    await db.select().from(users).where(eq(users.email, userEmail)).limit(1)
-  )[0];
-
-  if (!studentRecord) {
-    const studentId = session.user.id || `usr-${Date.now().toString(36)}`;
-    const [createdUser] = await db
-      .insert(users)
-      .values({
-        id: studentId,
-        email: userEmail,
-        name: session.user.name || userEmail.split("@")[0],
-        role: session.user.role || "student",
-        createdAt: new Date(),
-      })
-      .returning();
-    studentRecord = createdUser;
-  }
+  const studentRecord = await ensureUserExists({
+    id: session.user.id,
+    email: userEmail,
+    name: session.user.name,
+    role: session.user.role,
+  });
 
   // 2. Fetch assessment details
   const assessment = await getAssessmentById(assessmentId);

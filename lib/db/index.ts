@@ -16,6 +16,7 @@ const client =
     prepare: false,
     ssl: "require",
     max: 10,
+    connect_timeout: 4,
   });
 
 if (process.env.NODE_ENV !== "production") {

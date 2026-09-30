@@ -10,11 +10,20 @@ export default async function VerifyRequestPage() {
 
   if (process.env.NODE_ENV !== "production") {
     try {
-      const [latest] = await db
-        .select()
-        .from(verificationTokens)
-        .orderBy(desc(verificationTokens.expires))
-        .limit(1);
+      const { shouldUseRest, restGet } = await import("@/lib/db/rest-fallback");
+      let latest: any = null;
+
+      if (shouldUseRest()) {
+        const tokens = await restGet<any[]>("verificationToken", "order=expires.desc&limit=1");
+        latest = tokens?.[0];
+      } else {
+        const res = await db
+          .select()
+          .from(verificationTokens)
+          .orderBy(desc(verificationTokens.expires))
+          .limit(1);
+        latest = res[0];
+      }
 
       if (latest && new Date(latest.expires) > new Date()) {
         devEmail = latest.identifier;

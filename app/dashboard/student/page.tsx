@@ -3,10 +3,9 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { getWeeksForStudent } from "@/lib/db/queries/weeks";
 import { getSubmissionsForStudent } from "@/lib/db/queries/submissions";
-import { getAllScoresForStudent } from "@/lib/db/queries/assessments";
-import { db } from "@/lib/db";
-import { users, assessments } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { getAllScoresForStudent, getAllAssessments } from "@/lib/db/queries/assessments";
+import { getUserByEmail } from "@/lib/db/queries/users";
+import type { User } from "@/lib/db/schema";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { SubmitDialog } from "@/components/submissions/submit-dialog";
 import { StudentProfileBanner } from "@/components/student/student-profile-banner";
@@ -34,21 +33,15 @@ export default async function StudentDashboardPage() {
   const weeks = await getWeeksForStudent("cohort-data-analysis-fall-2026");
 
   // Fetch all assessments configured for this cohort
-  const allAssessments = await db.select().from(assessments);
+  const allAssessments = await getAllAssessments();
 
   // Fetch student submissions & scores if registered in DB
   let submissionsList: Awaited<ReturnType<typeof getSubmissionsForStudent>> = [];
   let studentScores: Awaited<ReturnType<typeof getAllScoresForStudent>> = [];
-  let userRecord: (typeof users.$inferSelect) | null = null;
+  let userRecord: User | null = null;
 
   if (session?.user?.email) {
-    const fetchedUser = (
-      await db
-        .select()
-        .from(users)
-        .where(eq(users.email, session.user.email.toLowerCase().trim()))
-        .limit(1)
-    )[0];
+    const fetchedUser = await getUserByEmail(session.user.email);
 
     if (fetchedUser) {
       userRecord = fetchedUser;

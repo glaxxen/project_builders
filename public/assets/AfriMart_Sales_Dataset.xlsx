@@ -1,0 +1,2 @@
+AfriMart Retail E-Commerce Intelligence Dataset (50,000+ transaction rows)
+Columns: Transaction_ID, Customer_ID, Country (Nigeria, Kenya, Ghana, South Africa, Egypt, Morocco), Product_Category, Sales_USD, Profit_USD, Order_Date, Ship_Mode, Return_Status.

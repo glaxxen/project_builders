@@ -2,21 +2,41 @@ import Image from "next/image";
 import Link from "next/link";
 import { auth } from "@/auth";
 import { getAllWeeksForAdmin } from "@/lib/db/queries/weeks";
+import { getAdminCohortOverview } from "@/lib/db/queries/admin";
+import { getGradingKey } from "@/lib/db/queries/assessments";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { WeeksManagement } from "@/components/admin/weeks-management";
+import { CohortOverviewTable } from "@/components/admin/cohort-overview-table";
+import { AssessmentBuilder } from "@/components/admin/assessment-builder";
 import {
   CheckCircle,
-  Eye,
-  EyeSlash,
   GearSix,
+  GraduationCap,
   ShieldCheck,
   Table,
   Users,
 } from "@phosphor-icons/react/dist/ssr";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminDashboardPage() {
   const session = await auth();
   const adminEmail = session?.user?.email || "admin@projectbuilders.dev";
-  const allWeeks = await getAllWeeksForAdmin("cohort-data-analysis-fall-2026");
+  const cohortId = "cohort-data-analysis-fall-2026";
+
+  const allWeeks = await getAllWeeksForAdmin(cohortId);
+  const cohortOverview = await getAdminCohortOverview(cohortId);
+
+  // Fetch full assessment question trees for builder
+  const assessmentDetails = await Promise.all(
+    cohortOverview.assessments.map(async (assess) => {
+      const questionsWithKeys = await getGradingKey(assess.id);
+      return {
+        ...assess,
+        questions: questionsWithKeys,
+      };
+    })
+  );
 
   return (
     <div className="min-h-screen bg-[#FAF8F3] text-[#102038] flex flex-col justify-between">
@@ -59,7 +79,7 @@ export default async function AdminDashboardPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="w-full max-w-6xl mx-auto px-6 sm:px-10 py-8 space-y-8 flex-1">
+      <main className="w-full max-w-6xl mx-auto px-6 sm:px-10 py-8 space-y-10 flex-1">
         {/* Admin Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-[#FFFFFF] border border-[#E8E2D6] rounded-xl p-5 shadow-sm space-y-2">
@@ -71,7 +91,7 @@ export default async function AdminDashboardPage() {
               Data Analysis &bull; Fall 2026
             </div>
             <div className="text-xs text-[#5BBFA4] font-medium font-sans">
-              400+ Enrolled Students
+              {cohortOverview.students.length} Enrolled Student Accounts
             </div>
           </div>
 
@@ -84,7 +104,7 @@ export default async function AdminDashboardPage() {
               {allWeeks.filter((w) => w.published).length} Published / {allWeeks.length} Total
             </div>
             <div className="text-xs text-[#7E8B9B] font-medium font-sans">
-              Week 1 Active &bull; Weeks 2-4 Staged
+              Strict Gate Enforced for Student Views
             </div>
           </div>
 
@@ -94,76 +114,35 @@ export default async function AdminDashboardPage() {
               <Table size={16} weight="bold" />
             </div>
             <div className="text-xl font-bold font-mono text-[#102038]">
-              Deterministic
+              {assessmentDetails.length} Quizzes Ready
             </div>
             <div className="text-xs text-[#1E4D40] font-medium font-sans">
-              Auto-marked Checkpoints (Zero LLM cost)
+              Deterministic Instant Marking (Zero Cost)
             </div>
           </div>
         </div>
 
-        {/* Section: Week Management & Publishing Gate */}
+        {/* Section 1: Phase 6 Consolidated Students × Scores Grid (The Most Important Screen) */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-display font-bold text-[#102038]">
-                Cohort Weeks &amp; Publishing Gate
-              </h2>
-              <p className="text-xs font-sans text-[#7E8B9B]">
-                Students only see published weeks. Unpublished weeks remain strictly excluded from student queries.
-              </p>
-            </div>
-          </div>
+          <CohortOverviewTable students={cohortOverview.students} weeks={allWeeks} />
+        </section>
 
-          <div className="bg-[#FFFFFF] border border-[#E8E2D6] rounded-xl overflow-hidden shadow-sm">
-            <table className="w-full text-left text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#FAF8F3] border-b border-[#E8E2D6] text-xs font-mono text-[#7E8B9B]">
-                  <th className="py-3 px-4 font-semibold">Week</th>
-                  <th className="py-3 px-4 font-semibold">Project Title</th>
-                  <th className="py-3 px-4 font-semibold">Deadline</th>
-                  <th className="py-3 px-4 font-semibold">Publication Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E8E2D6] font-sans">
-                {allWeeks.map((week) => (
-                  <tr key={week.id} className="hover:bg-[#FAF8F3]/50 transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-xs text-[#102038]">
-                      Week {week.weekNumber}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <div className="font-semibold text-[#102038]">{week.title}</div>
-                      <div className="text-xs text-[#7E8B9B] line-clamp-1">{week.brief}</div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-xs text-[#7E8B9B]">
-                      {new Date(week.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      {week.published ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-[#EBF7F4] text-[#1E4D40] border border-[#77CBB3]">
-                          <Eye size={12} weight="bold" />
-                          <span>Published</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-semibold bg-[#FAF8F3] text-[#7E8B9B] border border-[#E8E2D6]">
-                          <EyeSlash size={12} weight="bold" />
-                          <span>Unpublished (Hidden)</span>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        {/* Section 2: Phase 3 Week Management & Publishing Gate */}
+        <section className="space-y-4 pt-4 border-t border-[#E8E2D6]">
+          <WeeksManagement weeks={allWeeks} cohortId={cohortId} />
+        </section>
+
+        {/* Section 3: Phase 5 Assessment & Question Builder */}
+        <section className="space-y-4 pt-4 border-t border-[#E8E2D6]">
+          <AssessmentBuilder assessments={assessmentDetails} />
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="w-full bg-[#FFFFFF] border-t border-[#E8E2D6] px-6 sm:px-10 py-4 mt-8">
+      <footer className="w-full bg-[#FFFFFF] border-t border-[#E8E2D6] px-6 sm:px-10 py-4 mt-8 print:hidden">
         <div className="max-w-6xl mx-auto flex items-center justify-between text-xs font-mono text-[#7E8B9B]">
           <div>Project Builders &bull; Admin Console</div>
-          <div>Strict Role Gate Enforced</div>
+          <div>Strict Role Gate Enforced &bull; Real-time Verification</div>
         </div>
       </footer>
     </div>

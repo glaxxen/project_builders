@@ -1,0 +1,252 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import type { Week, Submission } from "@/lib/db/schema";
+import { submitProjectAction } from "@/lib/actions/submissions";
+import {
+  ArrowSquareOut,
+  Calendar,
+  CheckCircle,
+  Clock,
+  GitBranch,
+  GithubLogo,
+  SpinnerGap,
+  UploadSimple,
+  WarningCircle,
+  X,
+} from "@phosphor-icons/react";
+
+interface SubmitDialogProps {
+  week: Week;
+  existingSubmission?: Submission | null;
+}
+
+export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const [githubUrl, setGithubUrl] = useState(existingSubmission?.githubUrl || "");
+  const [reflection, setReflection] = useState(
+    existingSubmission?.reflectionFindings || ""
+  );
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const isDeadlinePassed = new Date() > new Date(week.deadline);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    startTransition(async () => {
+      try {
+        const result = await submitProjectAction({
+          weekId: week.id,
+          githubUrl,
+          reflectionFindings: reflection,
+        });
+
+        if (result.success) {
+          setSuccessMsg(
+            result.isReachable
+              ? "Project repository verified and submitted successfully!"
+              : "Project submitted! Note: Repository could not be confirmed public — ensure your repo permissions are public."
+          );
+          setTimeout(() => {
+            setIsOpen(false);
+            setSuccessMsg(null);
+          }, 1800);
+        }
+      } catch (err: unknown) {
+        setErrorMsg(err instanceof Error ? err.message : "Failed to submit project.");
+      }
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen(true);
+          setErrorMsg(null);
+          setSuccessMsg(null);
+        }}
+        className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-sans font-semibold rounded-lg transition-all cursor-pointer shadow-sm ${
+          existingSubmission
+            ? "text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border border-[#E8E2D6]"
+            : "text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] active:bg-[#0A1424]"
+        }`}
+      >
+        {existingSubmission ? (
+          <>
+            <GitBranch size={14} weight="bold" />
+            <span>{isDeadlinePassed ? "View Submission" : "Update Submission"}</span>
+          </>
+        ) : (
+          <>
+            <UploadSimple size={14} weight="bold" />
+            <span>Submit Project Repo</span>
+          </>
+        )}
+      </button>
+
+      {/* Modal Overlay */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 bg-[#102038]/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFFFF] border border-[#E8E2D6] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#E8E2D6] pb-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#5BBFA4] uppercase tracking-wider">
+                  <span>Week {week.weekNumber} Project Submission</span>
+                </div>
+                <h3 className="font-display font-bold text-lg text-[#102038] mt-0.5">
+                  {week.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="text-[#7E8B9B] hover:text-[#102038] p-1.5 rounded-md transition-colors"
+              >
+                <X size={18} weight="bold" />
+              </button>
+            </div>
+
+            {/* Deadline & Past Submission Notice */}
+            <div className="bg-[#FAF8F3] border border-[#E8E2D6] rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-mono">
+              <div className="flex items-center gap-1.5 text-[#7E8B9B]">
+                <Calendar size={14} weight="bold" />
+                <span>
+                  Deadline:{" "}
+                  <strong className="text-[#102038]">
+                    {new Date(week.deadline).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </strong>
+                </span>
+              </div>
+
+              {existingSubmission && (
+                <div className="flex items-center gap-1.5 text-[#1E4D40]">
+                  <CheckCircle size={14} weight="fill" className="text-[#5BBFA4]" />
+                  <span>
+                    Last submitted:{" "}
+                    {new Date(existingSubmission.updatedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Messages */}
+            {errorMsg && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs font-sans px-4 py-3 rounded-lg flex items-center gap-2">
+                <WarningCircle size={16} weight="bold" className="shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="bg-[#EBF7F4] border border-[#77CBB3] text-[#1E4D40] text-xs font-sans px-4 py-3 rounded-lg flex items-center gap-2">
+                <CheckCircle size={16} weight="fill" className="text-[#5BBFA4] shrink-0" />
+                <span>{successMsg}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4 font-sans text-sm">
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold text-[#102038] flex items-center gap-1.5">
+                  <GithubLogo size={15} weight="bold" />
+                  <span>Public GitHub Repository URL</span>
+                </label>
+                <input
+                  type="url"
+                  required
+                  disabled={isDeadlinePassed}
+                  placeholder="https://github.com/your-username/afrimart-analysis"
+                  value={githubUrl}
+                  onChange={(e) => setGithubUrl(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg font-mono text-xs text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#5BBFA4] disabled:opacity-60"
+                />
+                <p className="text-[11px] text-[#7E8B9B]">
+                  Ensure your repository is <strong>public</strong> so instructors can review your work.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono font-semibold text-[#102038]">
+                  Key Findings &amp; Reflection (3 Core Insights)
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  disabled={isDeadlinePassed}
+                  placeholder="1. Resolved accented country strings and reconciled $12.4k shipping discrepancy.&#10;2. Gross profit margin peaked at 38% in Kenya via cosmetics category.&#10;3. Identified top 5 return items and recommended supplier SLA adjustments."
+                  value={reflection}
+                  onChange={(e) => setReflection(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#5BBFA4] disabled:opacity-60"
+                />
+                <p className="text-[11px] text-[#7E8B9B]">
+                  Summarize your 3 most significant findings discovered from the dataset.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="pt-2 flex items-center justify-between border-t border-[#E8E2D6]">
+                <div>
+                  {existingSubmission && (
+                    <a
+                      href={existingSubmission.githubUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-mono text-[#102038] hover:text-[#5BBFA4] transition-colors"
+                    >
+                      <ArrowSquareOut size={13} weight="bold" />
+                      <span>Open current repo</span>
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsOpen(false)}
+                    className="px-3.5 py-2 text-xs font-sans font-medium text-[#4A5568] hover:text-[#102038] rounded-lg transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+
+                  {!isDeadlinePassed && (
+                    <button
+                      type="submit"
+                      disabled={isPending}
+                      className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-sans font-semibold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {isPending ? (
+                        <SpinnerGap size={14} weight="bold" className="animate-spin" />
+                      ) : (
+                        <CheckCircle size={14} weight="bold" />
+                      )}
+                      <span>{existingSubmission ? "Save Resubmission" : "Confirm Submission"}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}

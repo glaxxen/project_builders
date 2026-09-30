@@ -1,0 +1,6 @@
+Project Builders: Week 1 Dashboard Build and Submission Guide
+Objectives:
+1. Data Cleaning & Schema Normalization (resolve accented strings and null currencies)
+2. Metric by Dimension KPI modeling: Total Revenue, Gross Margin %, Average Order Value, Return Rate
+3. Construct 5 pivot charts following the strict Metric by Dimension rule across regional markets.
+4. Repository documentation with README and 3 key findings.

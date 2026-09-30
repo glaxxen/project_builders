@@ -1,64 +1,6 @@
-import type { Week } from "../schema";
-
-/**
- * In-memory / initial database store for weeks.
- * Initialized with default Data Analysis cohort data.
- * Week 1 is published; Weeks 2, 3, and 4 default to published: false.
- */
-let WEEKS_STORE: Week[] = [
-  {
-    id: "week-01",
-    cohortId: "cohort-data-analysis-fall-2026",
-    weekNumber: 1,
-    title: "Retail E-Commerce Intelligence (AfriMart)",
-    brief: "Clean, model, and analyze 50,000+ transaction rows across 6 African markets. Build 4 standard KPI cards and 5 pivot charts following the Metric by Dimension rule.",
-    datasetUrl: "/assets/AfriMart_Sales_Dataset.xlsx",
-    slidesUrl: "/assets/02_Dashboard_Build_and_Submission_Guide.docx",
-    deadline: new Date("2026-10-02T23:59:59.000Z"),
-    published: true, // Week 1 is published for active students
-    createdAt: new Date("2026-09-25T00:00:00.000Z"),
-    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
-  },
-  {
-    id: "week-02",
-    cohortId: "cohort-data-analysis-fall-2026",
-    weekNumber: 2,
-    title: "FinTech Customer Churn & Retention Analytics",
-    brief: "Construct monthly cohort retention matrices and churn risk scores using transaction activity logs.",
-    datasetUrl: null,
-    slidesUrl: null,
-    deadline: new Date("2026-10-09T23:59:59.000Z"),
-    published: false, // Default: false (unpublished)
-    createdAt: new Date("2026-09-25T00:00:00.000Z"),
-    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
-  },
-  {
-    id: "week-03",
-    cohortId: "cohort-data-analysis-fall-2026",
-    weekNumber: 3,
-    title: "Cross-Border Logistics SLAs & Throughput",
-    brief: "Diagnose shipment transit variances and carrier SLA violations across regional border corridors.",
-    datasetUrl: null,
-    slidesUrl: null,
-    deadline: new Date("2026-10-16T23:59:59.000Z"),
-    published: false, // Default: false (unpublished)
-    createdAt: new Date("2026-09-25T00:00:00.000Z"),
-    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
-  },
-  {
-    id: "week-04",
-    cohortId: "cohort-data-analysis-fall-2026",
-    weekNumber: 4,
-    title: "Executive Capstone & Final Assessment",
-    brief: "End-to-end executive data story synthesis, repository documentation, and gated Final Assessment.",
-    datasetUrl: null,
-    slidesUrl: null,
-    deadline: new Date("2026-10-23T23:59:59.000Z"),
-    published: false, // Default: false (unpublished)
-    createdAt: new Date("2026-09-25T00:00:00.000Z"),
-    updatedAt: new Date("2026-09-25T00:00:00.000Z"),
-  },
-];
+import { db } from "../index";
+import { weeks, rubricItems, type Week, type NewWeek, type RubricItem } from "../schema";
+import { eq, and, asc } from "drizzle-orm";
 
 /**
  * CRITICAL PUBLISHING RULE (PRD Section 9 & TODO Phase 3):
@@ -68,10 +10,16 @@ let WEEKS_STORE: Week[] = [
  * not even as a "coming soon" or disabled placeholder.
  */
 export async function getWeeksForStudent(cohortId: string): Promise<Week[]> {
-  // Query-level filtering: ONLY published weeks
-  return WEEKS_STORE.filter(
-    (w) => w.cohortId === cohortId && w.published === true
-  ).sort((a, b) => a.weekNumber - b.weekNumber);
+  try {
+    return await db
+      .select()
+      .from(weeks)
+      .where(and(eq(weeks.cohortId, cohortId), eq(weeks.published, true)))
+      .orderBy(asc(weeks.weekNumber));
+  } catch (error) {
+    console.error("Error fetching published weeks for student:", error);
+    return [];
+  }
 }
 
 /**
@@ -80,11 +28,18 @@ export async function getWeeksForStudent(cohortId: string): Promise<Week[]> {
  * route receives a 404 rather than displaying an unpublished brief.
  */
 export async function getPublishedWeekById(weekId: string): Promise<Week | null> {
-  const week = WEEKS_STORE.find((w) => w.id === weekId);
-  if (!week || !week.published) {
+  try {
+    const result = await db
+      .select()
+      .from(weeks)
+      .where(and(eq(weeks.id, weekId), eq(weeks.published, true)))
+      .limit(1);
+
+    return result[0] || null;
+  } catch (error) {
+    console.error("Error fetching published week by id:", error);
     return null;
   }
-  return week;
 }
 
 /**
@@ -92,9 +47,16 @@ export async function getPublishedWeekById(weekId: string): Promise<Week | null>
  * Intended exclusively for admin and instructor management routes.
  */
 export async function getAllWeeksForAdmin(cohortId: string): Promise<Week[]> {
-  return WEEKS_STORE.filter((w) => w.cohortId === cohortId).sort(
-    (a, b) => a.weekNumber - b.weekNumber
-  );
+  try {
+    return await db
+      .select()
+      .from(weeks)
+      .where(eq(weeks.cohortId, cohortId))
+      .orderBy(asc(weeks.weekNumber));
+  } catch (error) {
+    console.error("Error fetching all weeks for admin:", error);
+    return [];
+  }
 }
 
 /**
@@ -104,18 +66,54 @@ export async function setWeekPublishedStatus(
   weekId: string,
   published: boolean
 ): Promise<Week | null> {
-  const index = WEEKS_STORE.findIndex((w) => w.id === weekId);
-  if (index === -1) return null;
+  try {
+    const updated = await db
+      .update(weeks)
+      .set({ published, updatedAt: new Date() })
+      .where(eq(weeks.id, weekId))
+      .returning();
 
-  const current = WEEKS_STORE[index];
-  if (!current) return null;
+    return updated[0] || null;
+  } catch (error) {
+    console.error("Error updating week published status:", error);
+    return null;
+  }
+}
 
-  const updated: Week = {
-    ...current,
-    published,
-    updatedAt: new Date(),
-  };
+/**
+ * Admin mutation: Create a new week in a cohort.
+ */
+export async function createWeek(data: Omit<NewWeek, "id" | "createdAt" | "updatedAt">): Promise<Week | null> {
+  try {
+    const id = `week-${String(data.weekNumber).padStart(2, "0")}-${Date.now().toString(36)}`;
+    const created = await db
+      .insert(weeks)
+      .values({
+        ...data,
+        id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
 
-  WEEKS_STORE[index] = updated;
-  return updated;
+    return created[0] || null;
+  } catch (error) {
+    console.error("Error creating week:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetch rubric items for a given week.
+ */
+export async function getRubricForWeek(weekId: string): Promise<RubricItem[]> {
+  try {
+    return await db
+      .select()
+      .from(rubricItems)
+      .where(eq(rubricItems.weekId, weekId));
+  } catch (error) {
+    console.error("Error fetching rubric for week:", error);
+    return [];
+  }
 }

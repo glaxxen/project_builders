@@ -89,13 +89,13 @@ function LoginForm() {
             Sign in to Platform
           </h1>
           <p className="text-xs uppercase tracking-widest font-mono font-semibold text-[#5BBFA4] mt-1">
-            Student &amp; Instructor Access
+            One-Click Google Access
           </p>
         </div>
       </div>
 
       <p className="text-sm font-sans text-[#4A5568] text-center leading-relaxed">
-        Access your active cohort workspace, weekly project briefs, and assessments.
+        Sign in with your Google account to access your active cohort workspace, project briefs, and assessments.
       </p>
 
       {/* Error Banner */}
@@ -107,12 +107,12 @@ function LoginForm() {
       )}
 
       {/* Primary: Google One-Click Sign-In */}
-      <div className="space-y-3">
+      <div className="space-y-2">
         <button
           type="button"
           onClick={handleGoogleSignIn}
           disabled={isGoogleLoading || isLoading}
-          className="w-full inline-flex items-center justify-center gap-3 px-5 py-3 text-sm font-sans font-semibold text-[#102038] bg-[#FFFFFF] hover:bg-[#FAF8F3] active:bg-[#F3EFE6] border-2 border-[#E8E2D6] hover:border-[#102038] rounded-xl transition-all shadow-2xs disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+          className="w-full inline-flex items-center justify-center gap-3 px-5 py-3.5 text-sm font-sans font-semibold text-[#102038] bg-[#FFFFFF] hover:bg-[#FAF8F3] active:bg-[#F3EFE6] border-2 border-[#102038] rounded-xl transition-all shadow-sm hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
         >
           {isGoogleLoading ? (
             <>
@@ -143,6 +143,9 @@ function LoginForm() {
             </>
           )}
         </button>
+        <p className="text-[11px] font-sans text-center text-[#7E8B9B]">
+          Fastest &bull; Uses your Google identity &bull; No password needed
+        </p>
       </div>
 
       {/* Divider */}

@@ -23,6 +23,11 @@ export async function middleware(req: NextRequest) {
 
   // 2. Protected /dashboard routes
   if (pathname.startsWith("/dashboard")) {
+    // Allow development preview to inspect dashboard without hitting OAuth redirect
+    if (process.env.NODE_ENV === "development" && req.nextUrl.searchParams.get("preview") === "student") {
+      return NextResponse.next();
+    }
+
     // Unauthenticated access -> redirect to login with callback
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.url);

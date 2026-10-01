@@ -43,24 +43,25 @@ export function StudentProfileBanner({
     }
   }
 
-  // If already set and modal is closed, show a minimal badge with edit option
+  // If already set and modal is closed, show a minimal clean banner with edit option
   if (!isDefaultName && !isOpen) {
     return (
-      <div className="flex items-center justify-between bg-[#FFFFFF] border border-[#E8E2D6] rounded-xl px-4 py-2.5 shadow-2xs text-xs font-sans">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between bg-[#FFFFFF] border border-[#102038]/15 rounded-xl px-5 py-3 text-xs font-sans text-left">
+        <div className="flex items-center gap-2.5">
           <UserCheck size={16} weight="bold" className="text-[#5BBFA4]" />
-          <span className="text-[#7E8B9B]">Registered Builder:</span>
+          <span className="text-[#7E8B9B]">Registered builder:</span>
           <strong className="text-[#102038] font-semibold">{savedName}</strong>
         </div>
 
         <button
+          type="button"
           onClick={() => {
             setName(savedName || "");
             setIsOpen(true);
           }}
-          className="inline-flex items-center gap-1 text-[11px] font-mono text-[#7E8B9B] hover:text-[#102038] transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 min-h-[44px] px-3 text-xs font-sans text-[#7E8B9B] hover:text-[#102038] transition-colors cursor-pointer"
         >
-          <PencilSimple size={12} weight="bold" />
+          <PencilSimple size={13} weight="bold" />
           <span>Edit</span>
         </button>
       </div>
@@ -68,17 +69,17 @@ export function StudentProfileBanner({
   }
 
   return (
-    <div className="bg-[#FFFFFF] border-2 border-[#5BBFA4]/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3 relative">
+    <div className="bg-[#FFFFFF] border border-[#102038]/15 border-l-4 border-l-[#5BBFA4] rounded-xl p-5 sm:p-6 space-y-3 relative text-left">
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#EBF7F4] text-[#1E4D40] flex items-center justify-center">
-            <Sparkle size={18} weight="fill" className="text-[#5BBFA4]" />
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg bg-[#EBF7F4] text-[#1E4D40] flex items-center justify-center shrink-0 mt-0.5">
+            <Sparkle size={16} weight="fill" className="text-[#5BBFA4]" />
           </div>
           <div>
-            <h3 className="font-display font-bold text-sm text-[#102038]">
-              {isDefaultName ? "Complete Your Builder Profile" : "Update Your Official Name"}
+            <h3 className="font-display font-bold text-base text-[#102038]">
+              {isDefaultName ? "Complete your builder profile" : "Update your official name"}
             </h3>
-            <p className="text-xs font-sans text-[#7E8B9B]">
+            <p className="text-xs font-sans text-[#7E8B9B] mt-0.5">
               Your official full name appears on your verified graduation certificate and instructor grading rosters.
             </p>
           </div>
@@ -86,8 +87,10 @@ export function StudentProfileBanner({
 
         {!isDefaultName && (
           <button
+            type="button"
             onClick={() => setIsOpen(false)}
-            className="text-[#7E8B9B] hover:text-[#102038] p-1 cursor-pointer"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[#7E8B9B] hover:text-[#102038] rounded-lg cursor-pointer transition-colors"
+            aria-label="Close edit"
           >
             <X size={16} weight="bold" />
           </button>
@@ -102,13 +105,13 @@ export function StudentProfileBanner({
           placeholder="e.g. Samuel Adebayo"
           required
           disabled={isLoading}
-          className="flex-1 px-3.5 py-2 text-xs font-sans bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg text-[#102038] focus:outline-none focus:border-[#102038] focus:ring-1 focus:ring-[#102038]"
+          className="flex-1 min-h-[44px] px-3.5 py-2.5 text-xs font-sans bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-[#102038] focus:outline-none focus:border-[#102038] focus:ring-1 focus:ring-[#102038]"
         />
 
         <button
           type="submit"
           disabled={isLoading}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-sans font-semibold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 text-xs font-sans font-semibold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] rounded-lg transition-colors cursor-pointer shrink-0 disabled:opacity-60"
         >
           {isLoading ? (
             <>
@@ -116,12 +119,12 @@ export function StudentProfileBanner({
               <span>Saving...</span>
             </>
           ) : (
-            <span>Save Official Name</span>
+            <span>Save official name</span>
           )}
         </button>
       </form>
 
-      {error && <p className="text-xs text-red-600 font-sans">{error}</p>}
+      {error && <p className="text-xs text-[#B91C1C] font-sans">{error}</p>}
     </div>
   );
 }

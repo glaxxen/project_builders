@@ -73,20 +73,20 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
           setErrorMsg(null);
           setSuccessMsg(null);
         }}
-        className={`inline-flex items-center gap-1.5 px-4 py-2 text-xs font-sans font-semibold rounded-lg transition-all cursor-pointer shadow-sm ${
+        className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-xs font-sans font-semibold rounded-lg transition-colors cursor-pointer border ${
           existingSubmission
-            ? "text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border border-[#E8E2D6]"
-            : "text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] active:bg-[#0A1424]"
+            ? "text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border-[#102038]/20"
+            : "text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] active:bg-[#0A1424] border-transparent"
         }`}
       >
         {existingSubmission ? (
           <>
-            <GitBranch size={14} weight="bold" />
+            <GitBranch size={15} weight="bold" />
             <span>{isDeadlinePassed ? "View Submission" : "Update Submission"}</span>
           </>
         ) : (
           <>
-            <UploadSimple size={14} weight="bold" />
+            <UploadSimple size={15} weight="bold" />
             <span>Submit Project Repo</span>
           </>
         )}
@@ -95,12 +95,12 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
       {/* Modal Overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 bg-[#102038]/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FFFFFF] border border-[#E8E2D6] rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="bg-[#FFFFFF] border border-[#102038]/20 rounded-xl w-full max-w-lg p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150 motion-reduce:animate-none">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#E8E2D6] pb-3">
+            <div className="flex items-start justify-between border-b border-[#102038]/10 pb-3 gap-4">
               <div>
-                <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#5BBFA4] uppercase tracking-wider">
-                  <span>Week {week.weekNumber} Project Submission</span>
+                <div className="text-xs font-sans text-[#7E8B9B]">
+                  Week {week.weekNumber} project submission
                 </div>
                 <h3 className="font-display font-bold text-lg text-[#102038] mt-0.5">
                   {week.title}
@@ -110,7 +110,8 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="text-[#7E8B9B] hover:text-[#102038] p-1.5 rounded-md transition-colors"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[#7E8B9B] hover:text-[#102038] rounded-lg transition-colors cursor-pointer"
+                aria-label="Close dialog"
               >
                 <X size={18} weight="bold" />
               </button>
@@ -177,16 +178,16 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
                   placeholder="https://github.com/your-username/afrimart-analysis"
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg font-mono text-xs text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#5BBFA4] disabled:opacity-60"
+                  className="w-full min-h-[44px] px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg font-mono text-xs text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
                 />
                 <p className="text-[11px] text-[#7E8B9B]">
                   Ensure your repository is <strong>public</strong> so instructors can review your work.
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono font-semibold text-[#102038]">
-                  Key Findings &amp; Reflection (3 Core Insights)
+              <div className="space-y-1.5 text-left">
+                <label className="text-xs font-sans font-semibold text-[#102038]">
+                  Key findings and reflection (3 core insights)
                 </label>
                 <textarea
                   rows={4}
@@ -195,7 +196,7 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
                   placeholder="1. Resolved accented country strings and reconciled $12.4k shipping discrepancy.&#10;2. Gross profit margin peaked at 38% in Kenya via cosmetics category.&#10;3. Identified top 5 return items and recommended supplier SLA adjustments."
                   value={reflection}
                   onChange={(e) => setReflection(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#5BBFA4] disabled:opacity-60"
+                  className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
                 />
                 <p className="text-[11px] text-[#7E8B9B]">
                   Summarize your 3 most significant findings discovered from the dataset.
@@ -203,17 +204,17 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
               </div>
 
               {/* Actions */}
-              <div className="pt-2 flex items-center justify-between border-t border-[#E8E2D6]">
+              <div className="pt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#102038]/10">
                 <div>
                   {existingSubmission && (
                     <a
                       href={existingSubmission.githubUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-mono text-[#102038] hover:text-[#5BBFA4] transition-colors"
+                      className="inline-flex items-center gap-1.5 min-h-[44px] text-xs font-mono text-[#102038] hover:text-[#5BBFA4] transition-colors"
                     >
-                      <ArrowSquareOut size={13} weight="bold" />
-                      <span>Open current repo</span>
+                      <ArrowSquareOut size={14} weight="bold" />
+                      <span>Open current repository</span>
                     </a>
                   )}
                 </div>
@@ -222,7 +223,7 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="px-3.5 py-2 text-xs font-sans font-medium text-[#4A5568] hover:text-[#102038] rounded-lg transition-colors cursor-pointer"
+                    className="min-h-[44px] px-4 py-2.5 text-xs font-sans font-medium text-[#4A5568] hover:text-[#102038] rounded-lg transition-colors cursor-pointer"
                   >
                     Close
                   </button>
@@ -231,12 +232,12 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
                     <button
                       type="submit"
                       disabled={isPending}
-                      className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-sans font-semibold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                      className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 text-xs font-sans font-semibold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                     >
                       {isPending ? (
-                        <SpinnerGap size={14} weight="bold" className="animate-spin" />
+                        <SpinnerGap size={15} weight="bold" className="animate-spin" />
                       ) : (
-                        <CheckCircle size={14} weight="bold" />
+                        <CheckCircle size={15} weight="bold" />
                       )}
                       <span>{existingSubmission ? "Save Resubmission" : "Confirm Submission"}</span>
                     </button>

@@ -33,9 +33,13 @@ export function StudentProfileBanner({
     setError("");
 
     try {
-      await updateStudentNameAction(name.trim());
-      setSavedName(name.trim());
-      setIsOpen(false);
+      const res = await updateStudentNameAction(name.trim());
+      if (res.success && res.name) {
+        setSavedName(res.name);
+        setIsOpen(false);
+      } else {
+        setError(res.error || "Failed to update profile name.");
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update profile name.");
     } finally {

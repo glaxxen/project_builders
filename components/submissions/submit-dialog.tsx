@@ -41,12 +41,25 @@ export function SubmitDialog({ week, existingSubmission, variant = "default", cu
     setErrorMsg(null);
     setSuccessMsg(null);
 
+    const trimmedUrl = githubUrl.trim();
+    const githubRegex = /^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/)?.*$/;
+    if (!githubRegex.test(trimmedUrl)) {
+      setErrorMsg("Please provide a valid GitHub repository URL (e.g. https://github.com/username/repository).");
+      return;
+    }
+
+    const trimmedReflection = reflection.trim();
+    if (trimmedReflection.length < 20) {
+      setErrorMsg(`Please write at least 20 characters for your key findings (currently ${trimmedReflection.length}/20).`);
+      return;
+    }
+
     startTransition(async () => {
       try {
         const result = await submitProjectAction({
           weekId: week.id,
-          githubUrl,
-          reflectionFindings: reflection,
+          githubUrl: trimmedUrl,
+          reflectionFindings: trimmedReflection,
         });
 
         if (result.success) {
@@ -59,6 +72,8 @@ export function SubmitDialog({ week, existingSubmission, variant = "default", cu
             setIsOpen(false);
             setSuccessMsg(null);
           }, 1800);
+        } else {
+          setErrorMsg(result.error);
         }
       } catch (err: unknown) {
         setErrorMsg(err instanceof Error ? err.message : "Failed to submit project.");
@@ -204,21 +219,34 @@ export function SubmitDialog({ week, existingSubmission, variant = "default", cu
               </div>
 
               <div className="space-y-1.5 text-left">
-                <label className="text-xs font-sans font-semibold text-[#102038]">
-                  Key findings and reflection (3 core insights)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-sans font-semibold text-[#102038]">
+                    Key findings and reflection (3 core insights)
+                  </label>
+                  <span className={`text-[11px] font-mono font-medium ${
+                    reflection.trim().length >= 20 ? "text-emerald-700 font-bold" : "text-[#7E8B9B]"
+                  }`}>
+                    {reflection.trim().length}/20 min chars
+                  </span>
+                </div>
                 <textarea
                   rows={4}
                   required
                   disabled={isDeadlinePassed}
                   placeholder="1. Resolved accented country strings and reconciled $12.4k shipping discrepancy.&#10;2. Gross profit margin peaked at 38% in Kenya via cosmetics category.&#10;3. Identified top 5 return items and recommended supplier SLA adjustments."
                   value={reflection}
-                  onChange={(e) => setReflection(e.target.value)}
+                  onChange={(e) => {
+                    setReflection(e.target.value);
+                    if (errorMsg) setErrorMsg(null);
+                  }}
                   className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
                 />
-                <p className="text-[11px] text-[#7E8B9B]">
-                  Summarize your 3 most significant findings discovered from the dataset.
-                </p>
+                <div className="flex items-center justify-between text-[11px] text-[#7E8B9B]">
+                  <span>Summarize your 3 most significant findings discovered from the dataset.</span>
+                  {reflection.trim().length < 20 && reflection.trim().length > 0 && (
+                    <span className="text-amber-600 font-medium">Needs {20 - reflection.trim().length} more char{20 - reflection.trim().length === 1 ? "" : "s"}</span>
+                  )}
+                </div>
               </div>
 
               {/* Actions */}

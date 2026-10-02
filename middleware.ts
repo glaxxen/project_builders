@@ -1,15 +1,12 @@
+import NextAuth from "next-auth";
+import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
 
-export async function middleware(req: NextRequest) {
-  const token = await getToken({
-    req,
-    secret: process.env.AUTH_SECRET,
-  });
+const { auth } = NextAuth(authConfig);
 
-  const isLoggedIn = !!token;
-  const userRole = (token?.role as "admin" | "student") || "student";
+export default auth((req) => {
+  const isLoggedIn = !!req.auth;
+  const userRole = (req.auth?.user?.role as "admin" | "student") || "student";
   const { pathname } = req.nextUrl;
 
   // 1. If user is at /login or /login/verify and already authenticated, redirect to role dashboard
@@ -54,7 +51,7 @@ export async function middleware(req: NextRequest) {
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: [

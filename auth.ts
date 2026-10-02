@@ -17,22 +17,30 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   events: {
     async createUser({ user }) {
       if (user.email) {
-        const role = getRoleForEmail(user.email);
-        if (role === "admin") {
-          await db
-            .update(users)
-            .set({ role: "admin" })
-            .where(eq(users.email, user.email));
+        try {
+          const role = getRoleForEmail(user.email);
+          if (role === "admin") {
+            await db
+              .update(users)
+              .set({ role: "admin" })
+              .where(eq(users.email, user.email));
+          }
+        } catch (err) {
+          console.warn("Could not update role in createUser event:", err);
         }
       }
     },
     async linkAccount({ user }) {
       if (user.email) {
-        const role = getRoleForEmail(user.email);
-        await db
-          .update(users)
-          .set({ role })
-          .where(eq(users.email, user.email));
+        try {
+          const role = getRoleForEmail(user.email);
+          await db
+            .update(users)
+            .set({ role })
+            .where(eq(users.email, user.email));
+        } catch (err) {
+          console.warn("Could not update role in linkAccount event:", err);
+        }
       }
     },
   },

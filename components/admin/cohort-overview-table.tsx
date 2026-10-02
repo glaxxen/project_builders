@@ -2,8 +2,10 @@
 
 import { useState, useMemo } from "react";
 import type { StudentCohortRow } from "@/lib/db/queries/admin";
-import type { Week } from "@/lib/db/schema";
+import type { Week, Assessment } from "@/lib/db/schema";
+import { adminAllowExamRetakeAction } from "@/lib/actions/assessments";
 import {
+  ArrowCounterClockwise,
   ArrowSquareOut,
   CaretDown,
   CaretUp,
@@ -24,17 +26,49 @@ import {
 interface CohortOverviewTableProps {
   students: StudentCohortRow[];
   weeks: Week[];
+  assessments?: Assessment[];
 }
 
-export function CohortOverviewTable({ students, weeks }: CohortOverviewTableProps) {
+export function CohortOverviewTable({ students, weeks, assessments }: CohortOverviewTableProps) {
   const [search, setSearch] = useState("");
   const [submissionFilter, setSubmissionFilter] = useState<"all" | "missing" | "completed">("all");
   const [scoreFilter, setScoreFilter] = useState<"all" | "at-risk" | "passing">("all");
   const [sortBy, setSortBy] = useState<"name" | "average" | "completion">("name");
   const [sortAsc, setSortAsc] = useState(true);
+  const [retakeStatus, setRetakeStatus] = useState<{ studentId: string; weekNumber: number } | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Selected student for drill-down modal
   const [selectedStudent, setSelectedStudent] = useState<StudentCohortRow | null>(null);
+
+  const handleAllowRetake = async (studentId: string, weekNumber: number, weekId: string) => {
+    const assess = assessments?.find((a) => a.weekId === weekId && !a.isFinal);
+    const targetAssessmentId = assess ? assess.id : `assess-w${weekNumber}`;
+
+    if (!confirm(`Allow this student to retake Week ${weekNumber} examination? This will reset their recorded score and enable one fresh attempt.`)) {
+      return;
+    }
+
+    setRetakeStatus({ studentId, weekNumber });
+    try {
+      const res = await adminAllowExamRetakeAction({ studentId, assessmentId: targetAssessmentId });
+      setToastMessage(res.message);
+      if (selectedStudent && selectedStudent.studentId === studentId) {
+        setSelectedStudent({
+          ...selectedStudent,
+          scoresByWeek: {
+            ...selectedStudent.scoresByWeek,
+            [weekNumber]: null,
+          },
+        });
+      }
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to grant retake.");
+    } finally {
+      setRetakeStatus(null);
+    }
+  };
 
   // Filter and sort students
   const filteredStudents = useMemo(() => {
@@ -393,6 +427,14 @@ export function CohortOverviewTable({ students, weeks }: CohortOverviewTableProp
               </button>
             </div>
 
+            {/* Toast alert for retake action */}
+            {toastMessage && (
+              <div className="bg-[#EBF7F4] border border-[#77CBB3] text-[#1E4D40] text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 animate-in fade-in">
+                <CheckCircle size={16} weight="fill" className="text-[#5BBFA4] shrink-0" />
+                <span>{toastMessage}</span>
+              </div>
+            )}
+
             {/* Performance Stats Cards */}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="bg-[#FAF8F3] border border-[#E8E2D6] p-3 rounded-xl">
@@ -444,15 +486,34 @@ export function CohortOverviewTable({ students, weeks }: CohortOverviewTableProp
                         </div>
 
                         {score !== null && score !== undefined ? (
-                          <span
-                            className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-full ${
-                              score >= 70
-                                ? "bg-[#EBF7F4] text-[#1E4D40] border border-[#77CBB3]"
-                                : "bg-red-50 text-red-700 border border-red-200"
-                            }`}
-                          >
-                            Quiz: {score}%
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                                score >= 70
+                                  ? "bg-[#EBF7F4] text-[#1E4D40] border border-[#77CBB3]"
+                                  : "bg-red-50 text-red-700 border border-red-200"
+                              }`}
+                            >
+                              Quiz: {score}%
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={() => handleAllowRetake(selectedStudent.studentId, w.weekNumber, w.id)}
+                              disabled={retakeStatus?.weekNumber === w.weekNumber}
+                              title="Reset exam attempt and allow student to retake"
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold text-[#8C6D23] bg-[#FDF8ED] hover:bg-[#FBEFCF] border border-[#BA9C60]/40 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <ArrowCounterClockwise
+                                size={13}
+                                weight="bold"
+                                className={retakeStatus?.weekNumber === w.weekNumber ? "animate-spin" : ""}
+                              />
+                              <span>
+                                {retakeStatus?.weekNumber === w.weekNumber ? "Resetting..." : "Allow Retake"}
+                              </span>
+                            </button>
+                          </div>
                         ) : (
                           <span className="font-mono text-[11px] text-[#7E8B9B]">Quiz not taken</span>
                         )}

@@ -38,7 +38,7 @@ const FAQS: FAQItem[] = [
     category: "Scoring and assessments",
     question: "How do the Checkpoint Quizzes work, and is any AI involved in grading?",
     answer:
-      "Zero AI is used in grading. Quizzes are 10-question multiple-choice assessments checking specific data points, formula syntax, and business conclusions from that week's brief. Scoring is 100% deterministic and runs instantly upon submit.",
+      "Zero AI is used in grading. Quizzes are 5 to 10 question multiple-choice assessments checking specific data points, formula syntax, and business conclusions from that week's brief. Scoring is 100% deterministic and runs instantly upon submit.",
   },
   {
     category: "Certification",
@@ -52,65 +52,73 @@ export function CourseFaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="bg-[#FFFFFF] border border-[#102038]/15 rounded-xl p-6 sm:p-8 space-y-6 text-left">
-      {/* Announcements Notice: 1px border + left-edge 4px accent bar, no pill */}
-      <div className="bg-[#FAF8F3] border border-[#102038]/15 border-l-4 border-l-[#5BBFA4] rounded-lg p-4 sm:p-5 flex flex-col sm:flex-row items-start gap-4">
-        <div className="w-9 h-9 rounded-lg bg-[#EBF7F4] text-[#1E4D40] flex items-center justify-center shrink-0 mt-0.5">
-          <Megaphone size={18} weight="fill" className="text-[#5BBFA4]" />
+    <section className="bg-[#FFFFFF] border-2 border-[#102038]/15 rounded-2xl p-6 sm:p-8 space-y-6 text-left shadow-sm">
+      {/* Announcements Notice: Bold, Authoritative Bar */}
+      <div className="bg-[#FAF8F3] border-2 border-[#102038]/15 border-l-6 border-l-[#5BBFA4] rounded-xl p-5 flex flex-col sm:flex-row items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-[#EBF7F4] text-[#1E4D40] flex items-center justify-center shrink-0 mt-0.5 border border-[#5BBFA4]/30">
+          <Megaphone size={20} weight="fill" className="text-[#5BBFA4]" />
         </div>
-        <div className="space-y-1 text-xs font-sans text-left">
-          <div className="font-sans font-semibold text-[#102038] text-sm">
-            Cohort bulletin: Week 1 live class and submission window
+        <div className="space-y-1 text-left">
+          <div className="font-bold text-[#102038] text-base sm:text-lg font-display">
+            Cohort Bulletin: Week 2 Live Analytics &amp; Examination Window
           </div>
-          <p className="text-[#4A5568] leading-relaxed">
-            Welcome to the Data Analysis cohort! Week 1 project briefs and datasets are live below. Remember to keep your repository public and verify that all currency and UTF-8 encoding formulas match the rubric requirements.
+          <p className="text-sm sm:text-base font-normal text-[#102038]/90 leading-relaxed">
+            Welcome to Week 2 of the Data Analysis cohort! The FinTech Customer Churn brief, dataset, and official checkpoint examination are live above. Complete the 5-question exam and submit your public GitHub repo before Friday 11:59 PM.
           </p>
         </div>
       </div>
 
-      {/* Header: Sentence-case, no all-caps tracking, no pill filter row */}
-      <div className="border-b border-[#102038]/10 pb-4 text-left">
-        <div className="text-xs font-sans text-[#7E8B9B]">
-          Technical briefing and guidance
+      {/* Header: Sentence-case, Bold display text */}
+      <div className="border-b-2 border-[#102038]/10 pb-4 text-left">
+        <div className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#BA9C60]">
+          Technical Briefing &amp; Guidance
         </div>
-        <h2 className="font-display text-xl font-bold text-[#102038] mt-1">
-          Frequently encountered questions
+        <h2 className="font-display text-2xl sm:text-3xl font-bold text-[#102038] mt-1">
+          Frequently Encountered Questions
         </h2>
-        <p className="text-xs font-sans text-[#7E8B9B] mt-0.5">
+        <p className="text-sm sm:text-base font-medium text-[#102038]/70 mt-1">
           Official guidance on UTF-8 encodings, profit margin calculation formulas, and repository submission requirements.
         </p>
       </div>
 
-      {/* Plain Expandable List: Clean 1px borders, min 44px touch height, no all-caps categories, reduced-motion safe */}
-      <div className="space-y-2.5">
-        {FAQS.map((faq, idx) => {
-          const isOpen = openIndex === idx;
+      {/* FAQ Accordion List */}
+      <div className="space-y-3">
+        {FAQS.map((faq, index) => {
+          const isOpen = openIndex === index;
           return (
             <div
               key={faq.question}
-              className="border border-[#102038]/15 rounded-lg overflow-hidden bg-[#FAF8F3] transition-colors"
+              className="bg-[#FAF8F3]/60 border-2 border-[#102038]/15 rounded-xl overflow-hidden transition-all text-left"
             >
               <button
                 type="button"
-                onClick={() => setOpenIndex(isOpen ? null : idx)}
+                onClick={() => setOpenIndex(isOpen ? null : index)}
                 aria-expanded={isOpen}
-                className="w-full min-h-[44px] p-4 text-left flex items-center justify-between gap-4 cursor-pointer"
+                className="w-full min-h-[54px] p-4 sm:p-5 flex items-center justify-between gap-4 cursor-pointer text-left hover:bg-[#FAF8F3] transition-colors"
               >
-                <span className="font-sans font-semibold text-sm text-[#102038] block leading-snug">
-                  {faq.question}
-                </span>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-left">
+                  <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-[#BA9C60] shrink-0">
+                    {faq.category}
+                  </span>
+                  <span className="font-sans font-bold text-sm sm:text-base text-[#102038]">
+                    {faq.question}
+                  </span>
+                </div>
+
                 <div
-                  className={`w-7 h-7 rounded-md bg-[#FFFFFF] border border-[#102038]/15 flex items-center justify-center text-[#102038] shrink-0 transition-transform duration-150 motion-reduce:transition-none ${
+                  className={`w-7 h-7 rounded-lg bg-[#FFFFFF] border border-[#102038]/20 flex items-center justify-center text-[#102038] transition-transform duration-150 shrink-0 ${
                     isOpen ? "rotate-180" : ""
                   }`}
                 >
-                  <CaretDown size={14} weight="bold" />
+                  <CaretDown size={16} weight="bold" />
                 </div>
               </button>
 
               {isOpen && (
-                <div className="px-4 pb-4 pt-1 text-xs font-sans text-[#4A5568] leading-relaxed border-t border-[#102038]/10 bg-[#FFFFFF]">
-                  {faq.answer}
+                <div className="p-5 sm:p-6 border-t border-[#102038]/10 bg-[#FFFFFF] text-left">
+                  <p className="text-sm sm:text-base font-normal text-[#102038]/90 leading-relaxed">
+                    {faq.answer}
+                  </p>
                 </div>
               )}
             </div>

@@ -28,7 +28,7 @@ export interface AssessmentWithQuestions extends Assessment {
  */
 export async function getAllAssessments(): Promise<Assessment[]> {
   if (shouldUseRest()) {
-    const list = await restGet<Assessment[]>("assessment", "order=createdAt.asc");
+    const list = await restGet<Assessment[]>("assessment");
     return list || [];
   }
 
@@ -36,7 +36,7 @@ export async function getAllAssessments(): Promise<Assessment[]> {
     return await db.select().from(assessments);
   } catch (error) {
     console.warn("Direct DB assessment list failed, falling back to REST:", error);
-    const list = await restGet<Assessment[]>("assessment", "order=createdAt.asc");
+    const list = await restGet<Assessment[]>("assessment");
     return list || [];
   }
 }

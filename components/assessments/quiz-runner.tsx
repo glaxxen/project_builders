@@ -112,26 +112,65 @@ export function QuizRunner({ assessment, existingScore }: QuizRunnerProps) {
           </p>
         </div>
 
-        {/* Existing score alert if previously completed */}
+        {/* Existing score alert if previously completed (Strict No Retake Policy) */}
         {existingScore && !result && (
-          <div className="bg-[#FAF8F3] border border-[#102038]/15 rounded-lg p-3.5 flex items-center justify-between text-xs font-sans">
-            <div className="flex items-center gap-2">
-              <CheckCircle size={15} weight="fill" className="text-[#5BBFA4]" />
-              <span>
-                Previous attempt recorded:{" "}
-                <strong className="text-[#102038]">{existingScore.scorePercentage}%</strong> on{" "}
-                {new Date(existingScore.completedAt).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
+          <div className={`border-l-4 rounded-xl p-5 space-y-3 bg-[#FFFFFF] border-y border-r border-[#102038]/15 ${
+            existingScore.scorePercentage >= assessment.passingScore
+              ? "border-l-[#5BBFA4]"
+              : "border-l-[#F87171]"
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <CheckCircle
+                  size={20}
+                  weight="fill"
+                  className={existingScore.scorePercentage >= assessment.passingScore ? "text-[#5BBFA4]" : "text-[#F87171]"}
+                />
+                <div>
+                  <h3 className="text-base font-bold text-[#102038]">
+                    Official Examination Completed
+                  </h3>
+                  <div className="text-xs font-semibold text-[#102038]/70">
+                    Recorded on {new Date(existingScore.completedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold font-mono ${
+                  existingScore.scorePercentage >= assessment.passingScore
+                    ? "bg-[#EBF7F4] text-[#1E4D40] border border-[#5BBFA4]"
+                    : "bg-[#FDF2F2] text-[#991B1B] border border-[#F87171]"
+                }`}>
+                  Score: {existingScore.scorePercentage}% {existingScore.scorePercentage >= assessment.passingScore ? "• Passed" : "• Benchmark Not Met"}
+                </span>
+              </div>
             </div>
-            <span className="text-[#7E8B9B]">Retakes update your official record</span>
+
+            <p className="text-xs sm:text-sm font-sans text-[#4A5568] leading-relaxed pt-1 border-t border-[#102038]/10">
+              <strong className="text-[#102038]">Single Attempt Enforced:</strong> In accordance with course regulations, examinations are written once and recorded on the official cohort transcript. Retakes are strictly locked unless authorization is granted by an instructor.
+            </p>
+
+            <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+              <Link
+                href="/dashboard/student"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#102038] hover:bg-[#233B5F] text-[#FAF8F3] text-xs font-bold rounded-lg transition-colors"
+              >
+                <ArrowLeft size={14} weight="bold" />
+                <span>Return to Student Workspace</span>
+              </Link>
+            </div>
           </div>
         )}
 
-        {/* Progress indicator (prior to submission) */}
-        {!result && (
+        {/* Progress indicator (only when taking active exam) */}
+        {!result && !existingScore && (
           <div className="space-y-1.5 pt-2 border-t border-[#102038]/10 text-left">
             <div className="flex items-center justify-between text-xs font-sans text-[#7E8B9B]">
               <span>Progress</span>
@@ -166,8 +205,56 @@ export function QuizRunner({ assessment, existingScore }: QuizRunnerProps) {
         </div>
       )}
 
-      {/* Questions Form (Prior to submission) */}
-      {!result && (
+      {/* Read-Only Questions Review if already completed */}
+      {existingScore && !result && (
+        <div className="space-y-4 text-left">
+          <div className="flex items-center justify-between pb-2 border-b border-[#102038]/15">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-[#102038]/80 font-mono">
+              Curriculum Questions Review (Locked)
+            </h2>
+            <span className="text-xs font-mono text-[#7E8B9B]">
+              {assessment.questions.length} Questions Configured
+            </span>
+          </div>
+
+          {assessment.questions.map((q, index) => (
+            <div
+              key={q.id}
+              className="bg-[#FFFFFF] border border-[#102038]/15 rounded-xl p-5 sm:p-6 space-y-4 text-left opacity-90"
+            >
+              <div className="flex items-start justify-between gap-4">
+                <span className="text-xs font-mono font-bold text-[#102038] bg-[#FAF8F3] border border-[#102038]/15 px-2.5 py-1 rounded-md shrink-0">
+                  Question {index + 1} of {totalQuestions}
+                </span>
+                <span className="text-xs font-mono font-semibold text-[#7E8B9B]">
+                  {q.points} points
+                </span>
+              </div>
+
+              <h2 className="text-base font-bold font-sans text-[#102038] leading-snug">
+                {q.prompt}
+              </h2>
+
+              <div className="space-y-2 pt-2">
+                {q.options.map((opt) => (
+                  <div
+                    key={opt.id}
+                    className="flex items-start gap-3 p-3.5 rounded-lg border border-[#102038]/15 bg-[#FAF8F3]/60 text-xs sm:text-sm font-sans text-[#102038]/80"
+                  >
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-[#102038]/30 mt-0.5 shrink-0" />
+                    <span className="flex-1 leading-relaxed">
+                      {opt.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Active Questions Form (Prior to submission and only if not previously completed) */}
+      {!result && !existingScore && (
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           {assessment.questions.map((q, index) => {
             const selectedOptionId = answers[q.id];

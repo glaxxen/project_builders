@@ -19,9 +19,11 @@ import {
 interface SubmitDialogProps {
   week: Week;
   existingSubmission?: Submission | null;
+  variant?: "default" | "hero" | "hero-primary" | "hero-secondary";
+  customLabel?: string;
 }
 
-export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
+export function SubmitDialog({ week, existingSubmission, variant = "default", customLabel }: SubmitDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -64,6 +66,21 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
     });
   };
 
+  let buttonClasses = "";
+  if (variant === "hero-primary") {
+    buttonClasses = "text-[#102038] bg-[#5BBFA4] hover:bg-[#77CBB3] active:bg-[#4AA88F] min-h-[54px] px-8 py-3.5 text-base font-sans font-bold rounded-xl shadow-xl border-transparent";
+  } else if (variant === "hero-secondary") {
+    buttonClasses = "text-[#FAF8F3]/90 hover:text-white bg-[#FAF8F3]/10 hover:bg-[#FAF8F3]/15 border border-[#FAF8F3]/25 min-h-[46px] px-5 py-2.5 text-sm font-sans font-normal rounded-xl";
+  } else if (variant === "hero") {
+    buttonClasses = existingSubmission
+      ? "text-[#FAF8F3] bg-[#FAF8F3]/15 hover:bg-[#FAF8F3]/25 border border-[#FAF8F3]/30 min-h-[48px] px-6 py-3 text-xs font-sans font-semibold rounded-xl"
+      : "text-[#102038] bg-[#5BBFA4] hover:bg-[#77CBB3] active:bg-[#4AA88F] min-h-[48px] px-8 py-3.5 text-sm font-sans font-bold rounded-xl shadow-lg border-transparent";
+  } else {
+    buttonClasses = existingSubmission
+      ? "text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border-[#102038]/20 min-h-[44px] px-4 py-2.5 text-xs font-sans font-semibold rounded-lg"
+      : "text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] active:bg-[#0A1424] border-transparent min-h-[44px] px-4 py-2.5 text-xs font-sans font-semibold rounded-lg";
+  }
+
   return (
     <>
       <button
@@ -73,13 +90,14 @@ export function SubmitDialog({ week, existingSubmission }: SubmitDialogProps) {
           setErrorMsg(null);
           setSuccessMsg(null);
         }}
-        className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-xs font-sans font-semibold rounded-lg transition-colors cursor-pointer border ${
-          existingSubmission
-            ? "text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border-[#102038]/20"
-            : "text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] active:bg-[#0A1424] border-transparent"
-        }`}
+        className={`inline-flex items-center justify-center gap-2.5 transition-colors cursor-pointer border ${buttonClasses}`}
       >
-        {existingSubmission ? (
+        {customLabel ? (
+          <>
+            <UploadSimple size={16} weight="bold" />
+            <span>{customLabel}</span>
+          </>
+        ) : existingSubmission ? (
           <>
             <GitBranch size={15} weight="bold" />
             <span>{isDeadlinePassed ? "View Submission" : "Update Submission"}</span>

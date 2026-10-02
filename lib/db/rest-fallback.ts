@@ -129,3 +129,20 @@ export async function restUpsert<T = any>(
   });
   return res;
 }
+
+/**
+ * Delete rows matching a filter query and return deleted records.
+ */
+export async function restDelete<T = any>(
+  table: string,
+  filterQuery: string
+): Promise<T | null> {
+  const res = await fetchSupabaseRest<T>(`${table}?${filterQuery}`, {
+    method: "DELETE",
+    headers: {
+      Prefer: "return=representation",
+    },
+  });
+  return res;
+}
+

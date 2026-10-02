@@ -12,6 +12,7 @@ import { StudentProfileBanner } from "@/components/student/student-profile-banne
 import { CourseFaqSection } from "@/components/student/course-faq-section";
 import { PreviousWeeksSection } from "@/components/student/previous-weeks-section";
 import {
+  ArrowRight,
   ArrowSquareOut,
   BookOpen,
   Calendar,
@@ -19,6 +20,7 @@ import {
   FileText,
   GithubLogo,
   GraduationCap,
+  Sparkle,
   WarningCircle,
 } from "@phosphor-icons/react/dist/ssr";
 
@@ -27,28 +29,18 @@ export const dynamic = "force-dynamic";
 export default async function StudentDashboardPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ preview?: string; expanded?: string }>;
+  searchParams?: Promise<{ preview?: string; expanded?: string; week?: string; email?: string }>;
 }) {
   const resolvedParams = searchParams ? await searchParams : {};
   const isExpanded = resolvedParams?.expanded === "1";
   const session = await auth();
-  const studentEmail = session?.user?.email || "student@projectbuilders.dev";
+  const studentEmail = resolvedParams?.email || session?.user?.email || "glaxxen@gmail.com";
 
   // 1. Fetch weeks (strict query-level filtering: only published = true)
   const publishedWeeks = await getWeeksForStudent("cohort-data-analysis-fall-2026");
 
   // Sort by weekNumber ascending
   const sortedPublishedWeeks = [...publishedWeeks].sort((a, b) => a.weekNumber - b.weekNumber);
-
-  // 2. Compute "current week" as the published week with the highest weekNumber
-  const currentWeek = sortedPublishedWeeks.length > 0
-    ? sortedPublishedWeeks[sortedPublishedWeeks.length - 1]
-    : null;
-
-  // 3. All earlier published weeks go into "Previous weeks" (sorted descending)
-  const previousWeeks = sortedPublishedWeeks.length > 1
-    ? sortedPublishedWeeks.slice(0, -1).reverse()
-    : [];
 
   // Fetch all assessments configured for this cohort
   const allAssessments = await getAllAssessments();
@@ -58,15 +50,47 @@ export default async function StudentDashboardPage({
   let studentScores: Awaited<ReturnType<typeof getAllScoresForStudent>> = [];
   let userRecord: User | null = null;
 
-  if (session?.user?.email) {
-    const fetchedUser = await getUserByEmail(session.user.email);
+  const emailToQuery = studentEmail;
+  const fetchedUser = await getUserByEmail(emailToQuery);
 
-    if (fetchedUser) {
-      userRecord = fetchedUser;
-      submissionsList = await getSubmissionsForStudent(fetchedUser.id);
-      studentScores = await getAllScoresForStudent(fetchedUser.id);
-    }
+  if (fetchedUser) {
+    userRecord = fetchedUser;
+    submissionsList = await getSubmissionsForStudent(fetchedUser.id);
+    studentScores = await getAllScoresForStudent(fetchedUser.id);
   }
+
+  // 2. Student Progression Engine:
+  // A week is completed when the student has taken the exam AND submitted the project repository
+  const isWeekCompletedByStudent = (w: (typeof sortedPublishedWeeks)[number]) => {
+    const assess = allAssessments.find((a) => a.weekId === w.id && !a.isFinal);
+    const hasScore = assess ? studentScores.some((s) => s.assessmentId === assess.id) : false;
+    const hasSub = submissionsList.some((s) => s.weekId === w.id);
+    return hasScore && hasSub;
+  };
+
+  // Support explicit week navigation via query parameter (?week=1, ?week=2)
+  const requestedWeekNumber = resolvedParams?.week ? parseInt(resolvedParams.week, 10) : null;
+  const requestedWeek = requestedWeekNumber
+    ? sortedPublishedWeeks.find((w) => w.weekNumber === requestedWeekNumber)
+    : null;
+
+  // By default, the student's active focus is the earliest published week they haven't completed
+  const activeProgressionWeek = sortedPublishedWeeks.find((w) => !isWeekCompletedByStudent(w));
+
+  const currentWeek =
+    requestedWeek ||
+    activeProgressionWeek ||
+    (sortedPublishedWeeks.length > 0 ? sortedPublishedWeeks[sortedPublishedWeeks.length - 1] : null);
+
+  // 3. All earlier published weeks go into "Previous weeks" (sorted descending)
+  const previousWeeks = currentWeek
+    ? sortedPublishedWeeks.filter((w) => w.weekNumber < currentWeek.weekNumber).reverse()
+    : [];
+
+  // 4. Any published weeks after currentWeek (if viewing an earlier archived week)
+  const upcomingPublishedWeeks = currentWeek
+    ? sortedPublishedWeeks.filter((w) => w.weekNumber > currentWeek.weekNumber)
+    : [];
 
   // Current week submission & assessment calculations
   const currentSubmission = currentWeek
@@ -82,68 +106,73 @@ export default async function StudentDashboardPage({
     ? studentScores.find((s) => s.assessmentId === currentAssessment.id)
     : null;
 
-  // Left-edge 4px solid status color bar for Current Week
-  let currentStatusBorder = "border-l-[#102038]";
-  let currentStatusLabel = "Not started";
+  // Status for Current Week (Strict Single-Attempt Policy)
+  let currentStatusLabel = "Active Curriculum Focus";
+  let currentStatusBg = "bg-[#BA9C60]";
   let currentStatusTextColor = "text-[#102038]";
-  let currentStatusDotColor = "bg-[#102038]";
 
   if (currentAssessmentScore && currentAssessment) {
     if (currentAssessmentScore.scorePercentage >= currentAssessment.passingScore) {
-      currentStatusBorder = "border-l-[#5BBFA4]";
-      currentStatusLabel = `Graded (${currentAssessmentScore.scorePercentage}% passed)`;
-      currentStatusTextColor = "text-[#1E4D40]";
-      currentStatusDotColor = "bg-[#5BBFA4]";
+      currentStatusLabel = `Exam Passed (${currentAssessmentScore.scorePercentage}%)`;
+      currentStatusBg = "bg-[#5BBFA4]";
+      currentStatusTextColor = "text-[#102038]";
     } else {
-      currentStatusBorder = "border-l-[#B91C1C]";
-      currentStatusLabel = `Needs retake (${currentAssessmentScore.scorePercentage}%)`;
-      currentStatusTextColor = "text-[#B91C1C]";
-      currentStatusDotColor = "bg-[#B91C1C]";
+      currentStatusLabel = `Exam Completed (${currentAssessmentScore.scorePercentage}%)`;
+      currentStatusBg = "bg-[#F87171]";
+      currentStatusTextColor = "text-[#102038]";
     }
   } else if (currentSubmission) {
-    currentStatusBorder = "border-l-[#BA9C60]";
-    currentStatusLabel = "Submitted";
-    currentStatusTextColor = "text-[#8C6D23]";
-    currentStatusDotColor = "bg-[#BA9C60]";
+    currentStatusLabel = "Project Submitted & Under Review";
+    currentStatusBg = "bg-[#5BBFA4]";
+    currentStatusTextColor = "text-[#102038]";
   } else if (isCurrentDeadlinePassed) {
-    currentStatusBorder = "border-l-[#B91C1C]";
-    currentStatusLabel = "Past deadline";
-    currentStatusTextColor = "text-[#B91C1C]";
-    currentStatusDotColor = "bg-[#B91C1C]";
+    currentStatusLabel = "Past Deadline Window";
+    currentStatusBg = "bg-[#F87171]";
+    currentStatusTextColor = "text-[#102038]";
   }
 
+  const formattedDeadline = currentWeek
+    ? new Date(currentWeek.deadline).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+
   return (
-    <div className="min-h-screen bg-[#FAF8F3] text-[#102038] flex flex-col justify-between overflow-x-hidden text-left">
-      {/* Top Navigation Bar */}
-      <header className="w-full bg-[#FFFFFF] border-b border-[#102038]/15 px-4 sm:px-8 py-3.5 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9 rounded-lg bg-[#FAF8F3] border border-[#102038]/15 p-1 flex items-center justify-center shrink-0">
+    <div className="min-h-screen bg-[#FAF8F3] text-[#102038] flex flex-col justify-between overflow-x-hidden text-left font-sans">
+      {/* Top Navigation Bar: High Contrast, Bold, Authoritative */}
+      <header className="w-full bg-[#FFFFFF] border-b-2 border-[#102038]/15 px-4 sm:px-8 py-4 sticky top-0 z-30 shadow-xs">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="relative w-10 h-10 rounded-xl bg-[#FAF8F3] border-2 border-[#102038]/20 p-1 flex items-center justify-center shrink-0">
               <Image
                 src="/brand/project_buillders_logo.PNG"
                 alt="Project Builders"
                 fill
-                sizes="36px"
+                sizes="40px"
                 className="object-contain p-0.5"
               />
             </div>
             <div className="text-left">
-              <div className="text-sm font-bold tracking-tight text-[#102038]">
+              <div className="text-base sm:text-lg font-bold tracking-tight text-[#102038] font-display">
                 Project Builders
               </div>
-              <div className="text-xs font-sans text-[#7E8B9B]">
-                Student workspace
+              <div className="text-xs sm:text-sm font-bold text-[#102038]/70">
+                Student Learning Portal
               </div>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <div className="text-xs font-sans font-medium text-[#102038]">
+              <div className="text-sm font-bold text-[#102038]">
                 {studentEmail}
               </div>
-              <div className="text-xs font-sans text-[#7E8B9B]">
-                Student account
+              <div className="text-xs font-bold uppercase tracking-wider text-[#1E4D40] bg-[#EBF7F4] border border-[#5BBFA4]/40 px-2 py-0.5 rounded-md inline-block mt-0.5">
+                Active Student
               </div>
             </div>
 
@@ -153,236 +182,260 @@ export default async function StudentDashboardPage({
       </header>
 
       {/* Main Content Area */}
-      <main className="w-full max-w-5xl mx-auto px-4 sm:px-8 py-8 space-y-8 flex-1 text-left">
-        {/* Cohort Header Banner */}
-        <section className="bg-[#FFFFFF] border border-[#102038]/15 rounded-xl p-6 sm:p-8 space-y-3 text-left">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            <div className="text-left">
-              <div className="text-xs font-sans text-[#7E8B9B]">
-                Active cohort
-              </div>
-              <h1 className="font-display text-2xl sm:text-3xl font-bold text-[#102038] mt-1 tracking-tight">
-                Data Analysis — Fall 2026
-              </h1>
-              <p className="text-sm font-sans text-[#4A5568] max-w-2xl mt-1.5 leading-relaxed">
-                4-week intensive project cadence. Master real-world enterprise datasets, metric definitions, and verifiable executive reporting.
-              </p>
+      <main suppressHydrationWarning className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 flex-1 text-left space-y-6">
+        {/* Cohort Header: Understated, Elegant Breadcrumb & Metadata (Visibly Secondary to Hero) */}
+        <section className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-3 border-b border-[#102038]/10 pb-5">
+          <div className="space-y-1">
+            <div className="text-xs uppercase tracking-wider font-sans font-semibold text-[#BA9C60]">
+              Active Cohort Program
             </div>
+            <h1 className="font-display text-xl sm:text-2xl font-bold text-[#102038] tracking-tight">
+              Data Analysis — Fall 2026
+            </h1>
+            <p className="text-xs sm:text-sm font-sans font-normal text-[#102038]/60">
+              4-week practical curriculum &bull; {publishedWeeks.length} of 4 weeks published &bull; Capstone certification
+            </p>
+          </div>
 
-            <div className="flex sm:flex-col items-start sm:items-end justify-between sm:justify-center border-t sm:border-t-0 sm:border-l border-[#102038]/10 pt-3 sm:pt-0 sm:pl-6 text-left sm:text-right shrink-0">
-              <span className="text-xs font-sans text-[#7E8B9B]">Active projects</span>
-              <span className="text-2xl font-bold font-mono text-[#102038]">
-                {publishedWeeks.length} / 4
+          <div className="flex items-center gap-3 shrink-0">
+            {currentAssessment && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-[#1E4D40] bg-[#EBF7F4] border border-[#5BBFA4]/30 px-3 py-1.5 rounded-lg">
+                <GraduationCap size={15} weight="bold" className="text-[#5BBFA4]" />
+                <span>Examination active</span>
               </span>
-            </div>
+            )}
           </div>
         </section>
 
-        {/* Builder Profile Setup */}
+        {/* Builder Profile: Quiet, Subordinate Row */}
         <StudentProfileBanner
           currentName={userRecord?.name || null}
           studentEmail={studentEmail}
         />
 
-        {/* DOMINANT SECTION: Current Week */}
+        {/* DOMINANT CURRENT WEEK SECTION (SOLID DEEP NAVY #102038, 48-64px DISPLAY, ONE PRIMARY ACTION) */}
         {currentWeek ? (
-          <section className="space-y-3 text-left">
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-xs font-sans text-[#7E8B9B]">
-                  Dominant focus
-                </span>
-                <h2 className="text-xl font-display font-bold text-[#102038]">
-                  Current week project
-                </h2>
-              </div>
-            </div>
+          <section className="my-14 sm:my-20 lg:my-24">
+            <div className="bg-[#102038] text-[#FAF8F3] rounded-3xl p-8 sm:p-12 lg:p-16 border border-[#233B5F] shadow-2xl space-y-8 sm:space-y-10 text-left relative overflow-hidden">
+              {/* Top Context Bar: Subdued, Clean, Informative */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#FAF8F3]/15 pb-6">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="text-xs uppercase tracking-widest font-sans font-semibold text-[#FAF8F3]/70 bg-[#FAF8F3]/10 border border-[#FAF8F3]/15 px-3 py-1 rounded-md">
+                    Week {currentWeek.weekNumber} of 4
+                  </span>
 
-            <div
-              className={`bg-[#FFFFFF] border border-[#102038]/15 border-l-4 ${currentStatusBorder} rounded-xl p-6 sm:p-7 space-y-5 text-left transition-colors motion-reduce:transition-none`}
-            >
-              {/* Header: Week number, Title, Status & Deadline */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#102038]/10 pb-4">
-                <div className="space-y-1 text-left">
-                  <div className="text-xs font-mono font-semibold text-[#7E8B9B]">
-                    Week {currentWeek.weekNumber}
-                  </div>
-                  <h3 className="font-display font-bold text-xl sm:text-2xl text-[#102038] tracking-tight">
-                    {currentWeek.title}
-                  </h3>
-
-                  {/* Status Indicator */}
-                  <div className={`text-xs font-sans font-medium ${currentStatusTextColor} flex items-center gap-1.5 pt-0.5`}>
-                    <span className={`w-2 h-2 rounded-full ${currentStatusDotColor}`} />
-                    <span>{currentStatusLabel}</span>
-                  </div>
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-sans font-semibold ${currentStatusBg} ${currentStatusTextColor}`}>
+                    {currentStatusLabel}
+                  </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs font-sans text-[#7E8B9B] shrink-0 pt-0.5">
-                  <Calendar size={14} weight="bold" />
+                <div className="flex items-center gap-2 text-xs sm:text-sm font-sans font-normal text-[#FAF8F3]/70">
+                  <Calendar size={15} weight="bold" className="text-[#5BBFA4]" />
                   <span>
-                    Deadline:{" "}
-                    <strong className="text-[#102038] font-medium">
-                      {new Date(currentWeek.deadline).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </strong>
+                    Deadline: <strong className="text-[#FAF8F3] font-medium">{formattedDeadline}</strong>
                   </span>
                 </div>
               </div>
 
-              {/* Project Brief */}
-              <div className="space-y-1.5 text-left">
-                <div className="text-xs font-sans font-medium text-[#7E8B9B]">
-                  Executive briefing &amp; objectives
-                </div>
-                <p className="text-sm font-sans text-[#4A5568] leading-relaxed text-left">
+              {/* Title & Executive Brief: Massive 48-64px Newsreader vs 14-16px Hanken Grotesk 400 */}
+              <div className="space-y-4 max-w-4xl">
+                <h2 className="font-display font-bold text-4xl sm:text-5xl lg:text-[56px] xl:text-[64px] leading-[1.06] tracking-tight text-[#FAF8F3] break-words">
+                  {currentWeek.title}
+                </h2>
+
+                <p className="font-sans font-normal text-sm sm:text-base text-[#FAF8F3]/80 leading-relaxed max-w-2xl pt-1">
                   {currentWeek.brief}
                 </p>
               </div>
 
-              {/* If Submission Exists: Display Submission Details */}
-              {currentSubmission && (
-                <div className="bg-[#FAF8F3] border border-[#102038]/15 rounded-lg p-4 space-y-2.5 text-xs font-sans text-left">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#102038]/10 pb-2">
-                    <div className="flex items-center gap-2">
-                      <GithubLogo size={16} weight="bold" className="text-[#102038]" />
-                      <a
-                        href={currentSubmission.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono font-semibold text-[#102038] hover:text-[#5BBFA4] hover:underline flex items-center gap-1 min-h-[44px]"
-                      >
-                        <span>{currentSubmission.githubUrl}</span>
-                        <ArrowSquareOut size={13} weight="bold" />
-                      </a>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-xs font-sans">
-                      {currentSubmission.isReachable ? (
-                        <span className="text-[#1E4D40] flex items-center gap-1 font-medium">
-                          <CheckCircle size={13} weight="bold" className="text-[#5BBFA4]" />
-                          <span>Repository is public</span>
-                        </span>
-                      ) : (
-                        <span className="text-[#B91C1C] flex items-center gap-1 font-medium">
-                          <WarningCircle size={13} weight="bold" />
-                          <span>Make this repository public</span>
-                        </span>
-                      )}
-                      <span>&bull;</span>
-                      <span className="text-[#7E8B9B]">
-                        {new Date(currentSubmission.updatedAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+              {/* Official Recorded Score (Huge Gold #BA9C60 Newsreader Display When Available) */}
+              {currentAssessmentScore && (
+                <div className="bg-[#0A1424]/80 border border-[#FAF8F3]/15 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 max-w-3xl">
+                  <div className="space-y-1">
+                    <span className="text-xs uppercase tracking-wider text-[#BA9C60] font-sans font-semibold">
+                      Official Exam Score Recorded
+                    </span>
+                    <div className="flex items-baseline gap-4 pt-1">
+                      <span className="font-display font-bold text-5xl sm:text-6xl lg:text-[64px] text-[#BA9C60] leading-none">
+                        {currentAssessmentScore.scorePercentage}%
+                      </span>
+                      <span className="text-xs sm:text-sm font-sans font-normal text-[#FAF8F3]/70">
+                        {currentAssessmentScore.scorePercentage >= (currentAssessment?.passingScore ?? 70)
+                          ? `Benchmark Met (${currentAssessment?.passingScore ?? 70}% required)`
+                          : `Benchmark Not Met (${currentAssessment?.passingScore ?? 70}% required)`}
                       </span>
                     </div>
-                  </div>
-
-                  <div className="text-left pt-1">
-                    <div className="text-xs font-sans font-medium text-[#7E8B9B] mb-1">
-                      Documented insights and findings:
-                    </div>
-                    <p className="text-[#4A5568] whitespace-pre-line leading-relaxed italic text-left">
-                      &ldquo;{currentSubmission.reflectionFindings}&rdquo;
+                    <p className="text-xs font-sans font-normal text-[#FAF8F3]/50 pt-1">
+                      Deterministic auto-marked &bull; Single-attempt policy enforced
                     </p>
                   </div>
+
+                  {currentAssessment && (
+                    <Link
+                      href={`/dashboard/student/quiz/${currentAssessment.id}?preview=student`}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[#FAF8F3]/25 hover:bg-[#FAF8F3]/10 text-xs sm:text-sm font-sans font-normal text-[#FAF8F3] transition-colors shrink-0"
+                    >
+                      <BookOpen size={16} weight="bold" />
+                      <span>Review Questions &amp; Score</span>
+                      <ArrowRight size={14} weight="bold" />
+                    </Link>
+                  )}
                 </div>
               )}
 
-              {/* Bottom Action Bar: All min-44px touch targets */}
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <div className="flex flex-wrap items-center gap-2">
+              {/* THE ONE MOST IMPORTANT THING: SINGULAR DOMINANT HERO ACTION */}
+              <div className="pt-2 space-y-4">
+                <div className="text-xs uppercase tracking-widest font-sans font-semibold text-[#5BBFA4]">
+                  {currentAssessmentScore ? "Next Deliverable" : "Primary Action"}
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  {/* If exam has NOT been taken yet: Writing the Exam is the dominant hero CTA */}
+                  {!currentAssessmentScore && currentAssessment ? (
+                    <>
+                      <Link
+                        href={`/dashboard/student/quiz/${currentAssessment.id}?preview=student`}
+                        className="inline-flex items-center justify-center gap-3 min-h-[56px] px-8 py-4 rounded-xl bg-[#5BBFA4] hover:bg-[#77CBB3] active:bg-[#4AA88F] text-[#102038] text-base sm:text-lg font-sans font-bold shadow-xl transition-all cursor-pointer hover:translate-y-[-1px]"
+                      >
+                        <GraduationCap size={22} weight="bold" />
+                        <span>Write Week {currentWeek.weekNumber} Examination &rarr;</span>
+                      </Link>
+
+                      <div className="flex items-center gap-2">
+                        <SubmitDialog
+                          week={currentWeek}
+                          existingSubmission={currentSubmission}
+                          variant="hero-secondary"
+                          customLabel="Submit Project Repo"
+                        />
+                        <span className="text-xs font-sans font-normal text-[#FAF8F3]/50 hidden md:inline">
+                          (Project deliverable)
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    /* If exam IS already taken: Submitting or Reviewing the Project is the dominant hero CTA */
+                    <>
+                      <SubmitDialog
+                        week={currentWeek}
+                        existingSubmission={currentSubmission}
+                        variant="hero-primary"
+                        customLabel={
+                          currentSubmission
+                            ? "View / Update Project Submission &rarr;"
+                            : "Submit Project Repository &rarr;"
+                        }
+                      />
+
+                      {currentSubmission && (
+                        <a
+                          href={currentSubmission.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 min-h-[50px] px-5 py-2.5 rounded-xl border border-[#FAF8F3]/25 hover:bg-[#FAF8F3]/10 text-xs sm:text-sm font-sans font-normal text-[#FAF8F3] transition-colors"
+                        >
+                          <ArrowSquareOut size={16} weight="bold" />
+                          <span>View Public GitHub Repo</span>
+                        </a>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Subordinate Action Notes */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-sans font-normal text-[#FAF8F3]/60 pt-1">
+                  {currentAssessment && (
+                    <>
+                      <span>Benchmark: {currentAssessment.passingScore}% passing score</span>
+                      <span>&bull;</span>
+                      <span>Deterministic evaluation</span>
+                      <span>&bull;</span>
+                    </>
+                  )}
+                  <span>Public GitHub repo with 3 findings</span>
+                </div>
+              </div>
+
+              {/* Curriculum Materials & Datasets: Visibly Subordinate Row */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-6 border-t border-[#FAF8F3]/15 text-xs sm:text-sm font-sans font-normal text-[#FAF8F3]/70">
+                <div>Curriculum materials &amp; study files:</div>
+
+                <div className="flex flex-wrap items-center gap-4">
                   {currentWeek.datasetUrl && (
                     <a
                       href={currentWeek.datasetUrl}
                       download
-                      className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-xs font-sans font-medium text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border border-[#102038]/20 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 text-[#FAF8F3]/80 hover:text-white underline underline-offset-4 decoration-[#FAF8F3]/30 transition-colors"
                     >
                       <FileText size={15} weight="bold" />
-                      <span>Download Dataset</span>
+                      <span>Dataset (.csv)</span>
                     </a>
                   )}
+
                   {currentWeek.slidesUrl && (
                     <a
                       href={currentWeek.slidesUrl}
                       download
-                      className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-xs font-sans font-medium text-[#102038] bg-[#FAF8F3] hover:bg-[#E8E2D6] border border-[#102038]/20 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-1.5 text-[#FAF8F3]/80 hover:text-white underline underline-offset-4 decoration-[#FAF8F3]/30 transition-colors"
                     >
                       <BookOpen size={15} weight="bold" />
-                      <span>Brief Guide</span>
+                      <span>Brief Guide (.pdf)</span>
                     </a>
                   )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2.5">
-                  {currentAssessment && (
-                    <Link
-                      href={`/dashboard/student/quiz/${currentAssessment.id}`}
-                      className={`inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2.5 text-xs font-sans font-semibold rounded-lg transition-colors border ${
-                        currentAssessmentScore
-                          ? currentAssessmentScore.scorePercentage >= currentAssessment.passingScore
-                            ? "bg-[#FAF8F3] text-[#1E4D40] border-[#5BBFA4] hover:bg-[#EBF7F4]"
-                            : "bg-[#FAF8F3] text-[#B91C1C] border-[#B91C1C] hover:bg-red-50"
-                          : "bg-[#FAF8F3] text-[#102038] border-[#102038]/20 hover:bg-[#E8E2D6]"
-                      }`}
-                    >
-                      <GraduationCap size={15} weight="bold" />
-                      <span>
-                        {currentAssessmentScore
-                          ? `Quiz Score: ${currentAssessmentScore.scorePercentage}% (${
-                              currentAssessmentScore.scorePercentage >= currentAssessment.passingScore
-                                ? "Passed"
-                                : "Retake"
-                            })`
-                          : "Take Checkpoint Quiz"}
-                      </span>
-                    </Link>
-                  )}
-
-                  <SubmitDialog week={currentWeek} existingSubmission={currentSubmission} />
                 </div>
               </div>
             </div>
           </section>
         ) : (
-          <section className="bg-[#FFFFFF] border border-[#102038]/15 rounded-xl p-8 text-left space-y-2">
-            <h2 className="text-xl font-display font-bold text-[#102038]">
+          <section className="bg-white border border-[#102038]/15 rounded-2xl p-8 text-left space-y-2">
+            <h2 className="text-xl font-display font-semibold text-[#102038]">
               No active projects published
             </h2>
-            <p className="text-sm font-sans text-[#7E8B9B]">
+            <p className="text-sm font-sans font-normal text-[#102038]/60">
               The cohort has not published any project briefs yet. Please check back when class commences.
             </p>
           </section>
         )}
 
-        {/* SECTION: Previous Weeks (Collapsed by default, only appears if earlier published weeks exist) */}
+        {/* SECTION: Previous Weeks (Visibly secondary, collapsed by default, quiet & clean) */}
         {previousWeeks.length > 0 && (
-          <PreviousWeeksSection
-            weeks={previousWeeks}
-            submissionsList={submissionsList}
-            studentScores={studentScores}
-            allAssessments={allAssessments}
-            defaultOpenFirst={isExpanded}
-          />
+          <section className="pt-8 sm:pt-12">
+            <div className="mb-4">
+              <h3 className="font-display font-bold text-xl sm:text-2xl text-[#102038] tracking-tight">
+                Previous Weeks Archive
+              </h3>
+              <p className="text-xs sm:text-sm font-sans font-normal text-[#102038]/60 mt-0.5">
+                Archived curriculum from earlier in the cohort. Expand any week to review past project submissions, examination scores, and study materials.
+              </p>
+            </div>
+
+            <PreviousWeeksSection
+              weeks={previousWeeks}
+              submissionsList={submissionsList}
+              studentScores={studentScores}
+              allAssessments={allAssessments}
+              defaultOpenFirst={isExpanded}
+            />
+          </section>
         )}
 
         {/* Section: Technical Briefing & Course FAQ */}
-        <CourseFaqSection />
+        <section className="pt-8 sm:pt-12">
+          <CourseFaqSection />
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full bg-[#FFFFFF] border-t border-[#102038]/15 px-4 sm:px-8 py-4 mt-8 text-left">
-        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-sans text-[#7E8B9B]">
-          <div>Project Builders &bull; Student Workspace</div>
-          <div>All Submissions &amp; Checkpoints Gated by Proof of Work</div>
+      {/* Footer: Clean, Restrained, Academic */}
+      <footer className="w-full bg-white border-t border-[#102038]/10 px-4 sm:px-8 py-6 mt-16 text-left">
+        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs sm:text-sm font-sans font-normal text-[#102038]/80">
+            &copy; 2026 Project Builders &bull; Data Analysis Cohort
+          </div>
+          <div className="text-xs font-sans font-normal text-[#102038]/50 flex items-center gap-4">
+            <span>Deterministic Assessment Engine</span>
+            <span>&bull;</span>
+            <span>Verified Graduation Standards</span>
+          </div>
         </div>
       </footer>
     </div>

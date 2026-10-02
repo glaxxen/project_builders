@@ -118,3 +118,62 @@ export async function updateUserName(emailOrId: string, newName: string): Promis
     return updated?.[0] || null;
   }
 }
+
+export async function getAllAdmins(): Promise<User[]> {
+  if (shouldUseRest()) {
+    const list = await restGet<User[]>("user", "role=eq.admin&order=createdAt.desc");
+    return list || [];
+  }
+
+  try {
+    return await db.select().from(users).where(eq(users.role, "admin"));
+  } catch (err) {
+    console.warn("Direct DB getAllAdmins failed, falling back to REST:", err);
+    const list = await restGet<User[]>("user", "role=eq.admin&order=createdAt.desc");
+    return list || [];
+  }
+}
+
+export async function updateUserRole(emailOrId: string, role: "admin" | "student"): Promise<User | null> {
+  const cleanEmail = emailOrId.toLowerCase().trim();
+  const isEmail = cleanEmail.includes("@");
+
+  if (isEmail) {
+    // Ensure user row exists so role persists
+    await ensureUserExists({
+      email: cleanEmail,
+      role,
+    });
+  }
+
+  if (shouldUseRest()) {
+    const filter = isEmail
+      ? `email=eq.${encodeURIComponent(cleanEmail)}`
+      : `id=eq.${encodeURIComponent(cleanEmail)}`;
+    const updated = await restUpdate<User[]>("user", filter, {
+      role,
+    });
+    return updated?.[0] || null;
+  }
+
+  try {
+    const condition = isEmail
+      ? eq(users.email, cleanEmail)
+      : eq(users.id, cleanEmail);
+    const [updated] = await db
+      .update(users)
+      .set({ role })
+      .where(condition)
+      .returning();
+    return updated || null;
+  } catch (err) {
+    console.warn("Direct DB updateUserRole failed, falling back to REST:", err);
+    const filter = isEmail
+      ? `email=eq.${encodeURIComponent(cleanEmail)}`
+      : `id=eq.${encodeURIComponent(cleanEmail)}`;
+    const updated = await restUpdate<User[]>("user", filter, {
+      role,
+    });
+    return updated?.[0] || null;
+  }
+}

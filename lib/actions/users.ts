@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/auth";
-import { updateUserName, ensureUserExists } from "@/lib/db/queries/users";
+import { updateUserName, ensureUserExists, updateUserRole } from "@/lib/db/queries/users";
 import { revalidatePath } from "next/cache";
 
 export async function updateStudentNameAction(newName: string) {
@@ -32,4 +32,36 @@ export async function updateStudentNameAction(newName: string) {
   revalidatePath("/dashboard/admin");
 
   return { success: true, name: trimmed };
+}
+
+export async function adminUpdateUserRoleAction(data: {
+  email: string;
+  role: "admin" | "student";
+}) {
+  const session = await auth();
+  const callerRole = session?.user?.role;
+  const isDev = process.env.NODE_ENV === "development";
+
+  // Allow in development preview or if authenticated as admin
+  if (!isDev && callerRole !== "admin") {
+    throw new Error("Unauthorized: Only administrators can modify roles.");
+  }
+
+  const cleanEmail = data.email.toLowerCase().trim();
+  if (!cleanEmail || !cleanEmail.includes("@")) {
+    throw new Error("Please provide a valid email address.");
+  }
+
+  const updated = await updateUserRole(cleanEmail, data.role);
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/student");
+
+  return {
+    success: true,
+    message: data.role === "admin"
+      ? `Granted Administrator role to ${cleanEmail}.`
+      : `Set role to Student for ${cleanEmail}.`,
+    user: updated,
+  };
 }

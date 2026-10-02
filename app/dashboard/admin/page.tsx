@@ -8,6 +8,9 @@ import { SignOutButton } from "@/components/auth/sign-out-button";
 import { WeeksManagement } from "@/components/admin/weeks-management";
 import { CohortOverviewTable } from "@/components/admin/cohort-overview-table";
 import { AssessmentBuilder } from "@/components/admin/assessment-builder";
+import { AdminTeamManagement } from "@/components/admin/admin-team-management";
+import { getConfiguredAdminEmails } from "@/lib/auth/roles";
+import { getAllAdmins } from "@/lib/db/queries/users";
 import {
   CheckCircle,
   GearSix,
@@ -26,6 +29,8 @@ export default async function AdminDashboardPage() {
 
   const allWeeks = await getAllWeeksForAdmin(cohortId);
   const cohortOverview = await getAdminCohortOverview(cohortId);
+  const configuredEnvEmails = getConfiguredAdminEmails();
+  const dbAdmins = await getAllAdmins();
 
   // Fetch full assessment question trees for builder
   const assessmentDetails = await Promise.all(
@@ -79,7 +84,7 @@ export default async function AdminDashboardPage() {
       </header>
 
       {/* Main Content Area */}
-      <main className="w-full max-w-6xl mx-auto px-6 sm:px-10 py-8 space-y-10 flex-1">
+      <main suppressHydrationWarning className="w-full max-w-6xl mx-auto px-6 sm:px-10 py-8 space-y-10 flex-1">
         {/* Admin Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-[#FFFFFF] border border-[#E8E2D6] rounded-xl p-5 shadow-sm space-y-2">
@@ -124,7 +129,11 @@ export default async function AdminDashboardPage() {
 
         {/* Section 1: Phase 6 Consolidated Students × Scores Grid (The Most Important Screen) */}
         <section className="space-y-4">
-          <CohortOverviewTable students={cohortOverview.students} weeks={allWeeks} />
+          <CohortOverviewTable
+            students={cohortOverview.students}
+            weeks={allWeeks}
+            assessments={cohortOverview.assessments}
+          />
         </section>
 
         {/* Section 2: Phase 3 Week Management & Publishing Gate */}
@@ -135,6 +144,15 @@ export default async function AdminDashboardPage() {
         {/* Section 3: Phase 5 Assessment & Question Builder */}
         <section className="space-y-4 pt-4 border-t border-[#E8E2D6]">
           <AssessmentBuilder assessments={assessmentDetails} />
+        </section>
+
+        {/* Section 4: Admin Team & Instructor Permissions */}
+        <section className="space-y-4 pt-4 border-t border-[#E8E2D6]">
+          <AdminTeamManagement
+            configuredEnvEmails={configuredEnvEmails}
+            dbAdmins={dbAdmins}
+            currentAdminEmail={adminEmail}
+          />
         </section>
       </main>
 

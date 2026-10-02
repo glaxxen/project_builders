@@ -13,6 +13,7 @@ import {
   Sparkle,
   SpinnerGap,
   X,
+  Eye,
 } from "@phosphor-icons/react";
 
 interface AssessmentItem {
@@ -120,6 +121,13 @@ export function AssessmentBuilder({ assessments }: AssessmentBuilderProps) {
         </p>
       </div>
 
+      <div className="bg-[#EBF7F4] border border-[#5BBFA4]/40 rounded-xl p-4 flex items-start gap-3 text-xs sm:text-sm font-sans text-[#1E4D40]">
+        <CheckCircle size={18} weight="bold" className="text-[#5BBFA4] shrink-0 mt-0.5" />
+        <div>
+          <strong className="font-bold">Student Examination Portal Status:</strong> All assessments configured below automatically activate and appear in the student portal when their corresponding week is published. Click <strong>&ldquo;Preview Exam&rdquo;</strong> to test the exact exam student experience.
+        </div>
+      </div>
+
       <div className="space-y-3">
         {assessments.map((assessment) => {
           const isExpanded = expandedId === assessment.id;
@@ -160,7 +168,18 @@ export function AssessmentBuilder({ assessments }: AssessmentBuilderProps) {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
+                  <a
+                    href={`/dashboard/student/quiz/${assessment.id}?preview=student`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-sans font-bold text-[#FAF8F3] bg-[#102038] hover:bg-[#233B5F] rounded-lg transition-colors cursor-pointer shadow-xs"
+                  >
+                    <Eye size={14} weight="bold" />
+                    <span>Preview Exam</span>
+                  </a>
+
                   <button
                     type="button"
                     onClick={(e) => {

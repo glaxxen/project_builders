@@ -1,7 +1,11 @@
+@import url("https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..700&display=swap");
 @import "tailwindcss";
 
 @layer base {
   :root {
+    --font-newsreader: "Newsreader", Georgia, serif;
+    --font-hanken-grotesk: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
+
     /* Canvas & Base Tokens */
     --background: 43 33% 97%;          /* #FAF8F3 Warm Canvas Cream */
     --foreground: 216 56% 14%;         /* #102038 Deep Navy Text */
@@ -95,11 +99,13 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
-    font-family: var(--font-public-sans), system-ui, -apple-system, sans-serif;
+    font-family: var(--font-hanken-grotesk), var(--font-public-sans), system-ui, -apple-system, sans-serif;
+    font-weight: 400;
   }
 
   h1, h2, h3, h4, .font-display {
-    font-family: var(--font-fraunces), Georgia, serif;
+    font-family: var(--font-newsreader), var(--font-fraunces), Georgia, serif;
+    font-weight: 700;
   }
 }
 
@@ -137,8 +143,8 @@
   --color-brand-gold-deep: var(--brand-gold-deep);
   --color-brand-gold-soft: var(--brand-gold-soft);
 
-  --font-display: var(--font-fraunces), Georgia, Cambria, "Times New Roman", serif;
-  --font-sans: var(--font-public-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-newsreader), var(--font-fraunces), Georgia, Cambria, "Times New Roman", serif;
+  --font-sans: var(--font-hanken-grotesk), var(--font-public-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

@@ -15,3 +15,12 @@ export function getRoleForEmail(email?: string | null): "admin" | "student" {
   const normalizedEmail = email.trim().toLowerCase();
   return adminEmails.includes(normalizedEmail) ? "admin" : "student";
 }
+
+export function getConfiguredAdminEmails(): string[] {
+  const rawAdminEmails = process.env.ADMIN_EMAILS || "";
+  return rawAdminEmails
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+

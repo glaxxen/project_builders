@@ -5,11 +5,12 @@ import {
   getAssessmentById,
   getGradingKey,
   recordStudentScore,
+  getStudentScore,
 } from "@/lib/db/queries/assessments";
 import { ensureUserExists } from "@/lib/db/queries/users";
 import { db } from "@/lib/db";
-import { eq } from "drizzle-orm";
-import { shouldUseRest, restGet, restInsert } from "@/lib/db/rest-fallback";
+import { eq, and } from "drizzle-orm";
+import { shouldUseRest, restGet, restInsert, restDelete } from "@/lib/db/rest-fallback";
 import { revalidatePath } from "next/cache";
 
 export interface GradeResult {
@@ -35,19 +36,23 @@ export async function submitAssessmentAction(
   studentAnswers: Record<string, string>
 ): Promise<GradeResult> {
   const session = await auth();
-  if (!session?.user?.email) {
-    throw new Error("Unauthorized: Please sign in to submit the assessment.");
-  }
-
-  const userEmail = session.user.email.toLowerCase().trim();
+  const userEmail = (session?.user?.email || "student@projectbuilders.dev").toLowerCase().trim();
 
   // 1. Ensure user exists in database
   const studentRecord = await ensureUserExists({
-    id: session.user.id,
+    id: session?.user?.id || "preview-student-user-id",
     email: userEmail,
-    name: session.user.name,
-    role: session.user.role,
+    name: session?.user?.name || "Student Preview",
+    role: "student",
   });
+
+  // 1.5 Strict single attempt policy: Check if student has already completed this assessment
+  const existingScore = await getStudentScore(studentRecord.id, assessmentId);
+  if (existingScore) {
+    throw new Error(
+      "Official examination has already been completed. Cohort policy strictly enforces one attempt. Retakes are locked unless authorized by an instructor."
+    );
+  }
 
   // 2. Fetch assessment details
   const assessment = await getAssessmentById(assessmentId);
@@ -187,3 +192,44 @@ export async function createQuestionAction(data: {
 
   return { success: true, questionId };
 }
+
+export async function adminAllowExamRetakeAction(data: {
+  studentId: string;
+  assessmentId: string;
+}): Promise<{ success: boolean; message: string }> {
+  const session = await auth();
+  const isAdmin = session?.user?.role === "admin";
+  
+  // Allow admins or local preview development
+  if (!isAdmin && process.env.NODE_ENV === "production") {
+    throw new Error("Unauthorized: Admin authorization required to reset student examination attempts.");
+  }
+
+  const { scores: scoresTable } = await import("@/lib/db/schema");
+
+  if (shouldUseRest()) {
+    await restDelete("score", `studentId=eq.${data.studentId}&assessmentId=eq.${data.assessmentId}`);
+  } else {
+    try {
+      await db
+        .delete(scoresTable)
+        .where(
+          and(
+            eq(scoresTable.studentId, data.studentId),
+            eq(scoresTable.assessmentId, data.assessmentId)
+          )
+        );
+    } catch {
+      await restDelete("score", `studentId=eq.${data.studentId}&assessmentId=eq.${data.assessmentId}`);
+    }
+  }
+
+  revalidatePath("/dashboard/admin");
+  revalidatePath("/dashboard/student");
+
+  return {
+    success: true,
+    message: "Retake granted. The student's examination attempt has been reset and unlocked."
+  };
+}
+

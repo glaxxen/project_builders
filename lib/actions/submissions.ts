@@ -65,19 +65,22 @@ export async function submitProjectAction({
       return { success: false, error: "The submission deadline for this project has passed. Resubmissions are closed." };
     }
 
-    // 4. Validate GitHub URL format
-    const trimmedUrl = (githubUrl || "").trim();
-    const githubRegex = /^https:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/)?.*$/;
-    if (!githubRegex.test(trimmedUrl)) {
+    // 4. Validate GitHub URL format (normalize and case-insensitive)
+    let cleanUrl = (githubUrl || "").trim();
+    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      cleanUrl = `https://${cleanUrl}`;
+    }
+    const githubRegex = /^https?:\/\/(www\.)?github\.com\/[^\s/]+\/[^\s/]+/i;
+    if (!githubRegex.test(cleanUrl)) {
       return { success: false, error: "Please provide a valid GitHub repository URL (e.g. https://github.com/username/repository)." };
     }
 
     // 5. Validate reflection text
     const trimmedReflection = (reflectionFindings || "").trim();
-    if (trimmedReflection.length < 20) {
+    if (!trimmedReflection || trimmedReflection.length < 3) {
       return {
         success: false,
-        error: `Please write at least 20 characters summarizing your key findings (currently ${trimmedReflection.length}/20).`,
+        error: "Please enter your key findings and reflections from the dataset.",
       };
     }
 
@@ -87,7 +90,7 @@ export async function submitProjectAction({
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      const headRes = await fetch(trimmedUrl, {
+      const headRes = await fetch(cleanUrl, {
         method: "HEAD",
         signal: controller.signal,
         headers: {
@@ -109,7 +112,7 @@ export async function submitProjectAction({
     const submission = await upsertStudentSubmission({
       studentId,
       weekId,
-      githubUrl: trimmedUrl,
+      githubUrl: cleanUrl,
       reflectionFindings: trimmedReflection,
       isReachable,
     });

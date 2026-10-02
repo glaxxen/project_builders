@@ -4,6 +4,7 @@ import GitHub from "next-auth/providers/github";
 import { getRoleForEmail } from "@/lib/auth/roles";
 
 export const authConfig: NextAuthConfig = {
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   trustHost: true,
   providers: [
     Google({

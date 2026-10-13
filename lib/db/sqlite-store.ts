@@ -305,6 +305,9 @@ export function seedStoredQuestions(
   // Validate each question
   for (let i = 0; i < items.length; i++) {
     const q = items[i];
+    if (!q) {
+      return { success: false, count: 0, error: `Question ${i + 1} is missing.` };
+    }
     if (!q.text || typeof q.text !== "string" || !q.text.trim()) {
       return { success: false, count: 0, error: `Question ${i + 1} is missing text.` };
     }

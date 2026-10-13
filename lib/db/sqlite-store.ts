@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
+import defaultQuestions from "../../data/questions.json";
 
 export interface UserRecord {
   id: string;
@@ -127,8 +128,45 @@ function getDb(): DatabaseSync {
     );
   }
 
+  // Ensure 25 exam questions are seeded if questions table is empty
+  try {
+    const qCountRow = db.prepare("SELECT COUNT(*) as count FROM questions").get() as { count: number } | undefined;
+    if (!qCountRow || qCountRow.count === 0) {
+      seedDefaultQuestions(db);
+    }
+  } catch (err) {
+    console.warn("Could not check/seed questions in getDb:", err);
+  }
+
   dbInstance = db;
   return db;
+}
+
+function seedDefaultQuestions(db: DatabaseSync) {
+  const insertStmt = db.prepare(`
+    INSERT INTO questions (id, text, optionsJson, correctOptionIndex, topic, orderNumber)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  (
+    defaultQuestions as Array<{
+      id?: string;
+      text: string;
+      options: string[];
+      correct_option_index: number;
+      topic?: string;
+    }>
+  ).forEach((item, index) => {
+    const id = item.id || `q-${index + 1}`;
+    insertStmt.run(
+      id,
+      item.text.trim(),
+      JSON.stringify(item.options),
+      item.correct_option_index,
+      item.topic || "General",
+      index + 1
+    );
+  });
 }
 
 /* =========================================================================
@@ -259,15 +297,45 @@ export function setScoresReleased(scoresReleased: boolean): ExamSettings {
  * ========================================================================= */
 
 export function getAllStoredQuestions(): ExamQuestion[] {
-  const db = getDb();
-  const rows = db.prepare("SELECT * FROM questions ORDER BY orderNumber ASC").all() as any[];
-  return rows.map((r) => ({
-    id: r.id,
-    text: r.text,
-    options: JSON.parse(r.optionsJson || "[]"),
-    correctOptionIndex: r.correctOptionIndex,
-    topic: r.topic ?? undefined,
-    orderNumber: r.orderNumber,
+  try {
+    const db = getDb();
+    let rows = db.prepare("SELECT * FROM questions ORDER BY orderNumber ASC").all() as any[];
+
+    if (!rows || rows.length === 0) {
+      seedDefaultQuestions(db);
+      rows = db.prepare("SELECT * FROM questions ORDER BY orderNumber ASC").all() as any[];
+    }
+
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id: r.id,
+        text: r.text,
+        options: JSON.parse(r.optionsJson || "[]"),
+        correctOptionIndex: r.correctOptionIndex,
+        topic: r.topic ?? undefined,
+        orderNumber: r.orderNumber,
+      }));
+    }
+  } catch (err) {
+    console.error("Error fetching stored questions from sqlite:", err);
+  }
+
+  // Resilient fallback: return directly from bundled defaultQuestions so UI NEVER gets 0 questions
+  return (
+    defaultQuestions as Array<{
+      id?: string;
+      text: string;
+      options: string[];
+      correct_option_index: number;
+      topic?: string;
+    }>
+  ).map((item, index) => ({
+    id: item.id || `q-${index + 1}`,
+    text: item.text,
+    options: item.options,
+    correctOptionIndex: item.correct_option_index,
+    topic: item.topic || "General",
+    orderNumber: index + 1,
   }));
 }
 
@@ -403,15 +471,39 @@ export function startExamAttempt(params: {
   // Check if attempt already exists
   const existing = getExamAttemptByStudent(cleanEmail);
   if (existing) {
-    if (existing.status === "submitted") {
+    const hasZeroAnswers = Object.keys(existing.answers || {}).length === 0;
+
+    // If an attempt was submitted with 0 score & 0 answers (which occurred when 0 questions loaded),
+    // allow a clean restart so legitimate students aren't stuck with 0% due to an empty questions table.
+    if (existing.status === "submitted" && hasZeroAnswers && (existing.score === 0 || existing.score === null)) {
+      db.prepare("DELETE FROM exam_attempts WHERE id = ?").run(existing.id);
+    } else if (existing.status === "submitted") {
       return existing;
-    }
-    if (existing.status === "in_progress") {
+    } else if (existing.status === "in_progress") {
       // Check if deadline has passed
       if (existing.deadline && Date.now() > new Date(existing.deadline).getTime()) {
-        return autoFinalizeExpiredAttempt(existing.id);
+        if (hasZeroAnswers) {
+          // If deadline expired with 0 answers (due to 0 questions loaded), restart cleanly
+          db.prepare("DELETE FROM exam_attempts WHERE id = ?").run(existing.id);
+        } else {
+          return autoFinalizeExpiredAttempt(existing.id);
+        }
+      } else {
+        // If in_progress with 0 answers and started more than 5 minutes ago while questions were broken,
+        // refresh the timer to a full 50 minutes so the student does not lose time
+        const elapsedMs = existing.startedAt ? Date.now() - new Date(existing.startedAt).getTime() : 0;
+        if (hasZeroAnswers && elapsedMs > 5 * 60 * 1000) {
+          const freshNow = new Date();
+          const freshDeadline = new Date(freshNow.getTime() + 50 * 60 * 1000);
+          db.prepare(`
+            UPDATE exam_attempts
+            SET startedAt = ?, deadline = ?
+            WHERE id = ?
+          `).run(freshNow.toISOString(), freshDeadline.toISOString(), existing.id);
+          return getExamAttemptByStudent(cleanEmail)!;
+        }
+        return existing;
       }
-      return existing;
     }
   }
 

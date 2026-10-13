@@ -8,8 +8,11 @@ import { revalidatePath } from "next/cache";
 
 interface SubmitProjectPayload {
   weekId: string;
-  githubUrl: string;
-  reflectionFindings: string;
+  githubUrl?: string;
+  reflectionFindings?: string;
+  sqlQueries?: string;
+  answerSheet?: string;
+  managerMessage?: string;
 }
 
 export type SubmitProjectResult =
@@ -20,6 +23,9 @@ export async function submitProjectAction({
   weekId,
   githubUrl,
   reflectionFindings,
+  sqlQueries,
+  answerSheet,
+  managerMessage,
 }: SubmitProjectPayload): Promise<SubmitProjectResult> {
   try {
     const session = await auth();
@@ -65,55 +71,72 @@ export async function submitProjectAction({
       return { success: false, error: "The submission deadline for this project has passed. Resubmissions are closed." };
     }
 
-    // 4. Validate GitHub URL format (normalize and case-insensitive)
-    let cleanUrl = (githubUrl || "").trim();
-    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-      cleanUrl = `https://${cleanUrl}`;
-    }
-    const githubRegex = /^https?:\/\/(www\.)?github\.com\/[^\s/]+\/[^\s/]+/i;
-    if (!githubRegex.test(cleanUrl)) {
-      return { success: false, error: "Please provide a valid GitHub repository URL (e.g. https://github.com/username/repository)." };
-    }
-
-    // 5. Validate reflection text
-    const trimmedReflection = (reflectionFindings || "").trim();
-    if (!trimmedReflection || trimmedReflection.length < 3) {
-      return {
-        success: false,
-        error: "Please enter your key findings and reflections from the dataset.",
-      };
-    }
-
-    // 6. Check URL reachability (server-side check)
+    // Validation & Routing
+    const isWeek2 = !!sqlQueries || !!answerSheet || !!managerMessage;
+    let cleanUrl = "";
+    let trimmedReflection = "";
     let isReachable = true;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      const headRes = await fetch(cleanUrl, {
-        method: "HEAD",
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "Project-Builders-Verifier/1.0",
-        },
-      });
+    if (isWeek2) {
+      if (!sqlQueries?.trim() || !answerSheet?.trim() || !managerMessage?.trim()) {
+        return { success: false, error: "All three fields are required for this project." };
+      }
+      if (!sqlQueries.includes(";")) {
+        return { success: false, error: "Your SQL queries should contain at least one semicolon (;)." };
+      }
+    } else {
+      // 4. Validate GitHub URL format (normalize and case-insensitive)
+      cleanUrl = (githubUrl || "").trim();
+      if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+        cleanUrl = `https://${cleanUrl}`;
+      }
+      const githubRegex = /^https?:\/\/(www\.)?github\.com\/[^\s/]+\/[^\s/]+/i;
+      if (!githubRegex.test(cleanUrl)) {
+        return { success: false, error: "Please provide a valid GitHub repository URL (e.g. https://github.com/username/repository)." };
+      }
 
-      clearTimeout(timeoutId);
-      // If GitHub returns 404 or 500+, mark unreachable
-      if (!headRes.ok && headRes.status === 404) {
+      // 5. Validate reflection text
+      trimmedReflection = (reflectionFindings || "").trim();
+      if (!trimmedReflection || trimmedReflection.length < 3) {
+        return {
+          success: false,
+          error: "Please enter your key findings and reflections from the dataset.",
+        };
+      }
+
+      // 6. Check URL reachability (server-side check)
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+        const headRes = await fetch(cleanUrl, {
+          method: "HEAD",
+          signal: controller.signal,
+          headers: {
+            "User-Agent": "Project-Builders-Verifier/1.0",
+          },
+        });
+
+        clearTimeout(timeoutId);
+        // If GitHub returns 404 or 500+, mark unreachable
+        if (!headRes.ok && headRes.status === 404) {
+          isReachable = false;
+        }
+      } catch {
+        // Timeout or network glitch — do not block student, but flag reachability
         isReachable = false;
       }
-    } catch {
-      // Timeout or network glitch — do not block student, but flag reachability
-      isReachable = false;
     }
 
     // 7. Upsert submission
     const submission = await upsertStudentSubmission({
       studentId,
       weekId,
-      githubUrl: cleanUrl,
-      reflectionFindings: trimmedReflection,
+      githubUrl: isWeek2 ? null : cleanUrl,
+      reflectionFindings: isWeek2 ? null : trimmedReflection,
+      sqlQueries: sqlQueries?.trim() || null,
+      answerSheet: answerSheet?.trim() || null,
+      managerMessage: managerMessage?.trim() || null,
       isReachable,
     });
 

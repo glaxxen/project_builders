@@ -18,9 +18,9 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // 2. Protected /dashboard routes
-  if (pathname.startsWith("/dashboard")) {
-    // Allow development preview to inspect dashboard without hitting OAuth redirect
+  // 2. Protected /dashboard and /exam routes
+  if (pathname.startsWith("/dashboard") || pathname === "/exam" || pathname.startsWith("/exam/")) {
+    // Allow development preview to inspect dashboard or exam without hitting OAuth redirect
     if (process.env.NODE_ENV === "development" && (req.nextUrl.searchParams.get("preview") === "student" || req.nextUrl.searchParams.get("preview") === "admin")) {
       return NextResponse.next();
     }
@@ -56,6 +56,8 @@ export default auth((req) => {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/exam/:path*",
+    "/exam",
     "/login",
     "/login/verify",
   ],

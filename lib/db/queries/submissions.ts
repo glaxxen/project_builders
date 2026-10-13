@@ -75,8 +75,11 @@ export async function getSubmissionForStudentAndWeek(
 export async function upsertStudentSubmission(data: {
   studentId: string;
   weekId: string;
-  githubUrl: string;
-  reflectionFindings: string;
+  githubUrl: string | null;
+  reflectionFindings: string | null;
+  sqlQueries: string | null;
+  answerSheet: string | null;
+  managerMessage: string | null;
   isReachable: boolean;
 }): Promise<Submission | null> {
   const existing = await getSubmissionForStudentAndWeek(data.studentId, data.weekId);
@@ -89,6 +92,9 @@ export async function upsertStudentSubmission(data: {
         {
           githubUrl: data.githubUrl,
           reflectionFindings: data.reflectionFindings,
+          sqlQueries: data.sqlQueries,
+          answerSheet: data.answerSheet,
+          managerMessage: data.managerMessage,
           isReachable: data.isReachable,
           updatedAt: new Date().toISOString(),
         }
@@ -102,6 +108,9 @@ export async function upsertStudentSubmission(data: {
         weekId: data.weekId,
         githubUrl: data.githubUrl,
         reflectionFindings: data.reflectionFindings,
+        sqlQueries: data.sqlQueries,
+        answerSheet: data.answerSheet,
+        managerMessage: data.managerMessage,
         isReachable: data.isReachable,
         submittedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -117,6 +126,9 @@ export async function upsertStudentSubmission(data: {
         .set({
           githubUrl: data.githubUrl,
           reflectionFindings: data.reflectionFindings,
+          sqlQueries: data.sqlQueries,
+          answerSheet: data.answerSheet,
+          managerMessage: data.managerMessage,
           isReachable: data.isReachable,
           updatedAt: new Date(),
         })
@@ -134,6 +146,9 @@ export async function upsertStudentSubmission(data: {
           weekId: data.weekId,
           githubUrl: data.githubUrl,
           reflectionFindings: data.reflectionFindings,
+          sqlQueries: data.sqlQueries,
+          answerSheet: data.answerSheet,
+          managerMessage: data.managerMessage,
           isReachable: data.isReachable,
           submittedAt: new Date(),
           updatedAt: new Date(),
@@ -151,6 +166,9 @@ export async function upsertStudentSubmission(data: {
         {
           githubUrl: data.githubUrl,
           reflectionFindings: data.reflectionFindings,
+          sqlQueries: data.sqlQueries,
+          answerSheet: data.answerSheet,
+          managerMessage: data.managerMessage,
           isReachable: data.isReachable,
           updatedAt: new Date().toISOString(),
         }
@@ -164,6 +182,9 @@ export async function upsertStudentSubmission(data: {
         weekId: data.weekId,
         githubUrl: data.githubUrl,
         reflectionFindings: data.reflectionFindings,
+        sqlQueries: data.sqlQueries,
+        answerSheet: data.answerSheet,
+        managerMessage: data.managerMessage,
         isReachable: data.isReachable,
         submittedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

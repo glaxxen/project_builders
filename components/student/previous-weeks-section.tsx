@@ -191,45 +191,79 @@ export function PreviousWeeksSection({
                     <div className="bg-[#FFFFFF] border-2 border-[#102038]/15 rounded-xl p-5 space-y-3 text-sm text-left">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#102038]/10 pb-3">
                         <div className="flex items-center gap-2">
-                          <GithubLogo size={18} weight="bold" className="text-[#102038]" />
-                          <a
-                            href={submission.githubUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-mono font-bold text-[#102038] hover:text-[#5BBFA4] hover:underline flex items-center gap-1.5"
-                          >
-                            <span>{submission.githubUrl}</span>
-                            <ArrowSquareOut size={15} weight="bold" />
-                          </a>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-xs sm:text-sm font-bold">
-                          {submission.isReachable ? (
-                            <span className="text-[#1E4D40] flex items-center gap-1">
-                              <CheckCircle size={15} weight="bold" className="text-[#5BBFA4]" />
-                              <span>Public Repository Verified</span>
-                            </span>
+                          {week.weekNumber === 2 ? (
+                            <>
+                              <FileText size={18} weight="bold" className="text-[#102038]" />
+                              <span className="font-mono font-bold text-[#102038]">SQL & Answer Sheet</span>
+                            </>
                           ) : (
-                            <span className="text-[#B91C1C] flex items-center gap-1">
-                              <WarningCircle size={15} weight="bold" />
-                              <span>Private Repo</span>
-                            </span>
+                            <>
+                              <GithubLogo size={18} weight="bold" className="text-[#102038]" />
+                              {submission.githubUrl ? (
+                                <a
+                                  href={submission.githubUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="font-mono font-bold text-[#102038] hover:text-[#5BBFA4] hover:underline flex items-center gap-1.5"
+                                >
+                                  <span>{submission.githubUrl}</span>
+                                  <ArrowSquareOut size={15} weight="bold" />
+                                </a>
+                              ) : (
+                                <span className="font-mono font-bold text-[#102038]">No URL</span>
+                              )}
+                            </>
                           )}
                         </div>
+
+                        {week.weekNumber !== 2 && (
+                          <div className="flex items-center gap-2 text-xs sm:text-sm font-bold">
+                            {submission.isReachable ? (
+                              <span className="text-[#1E4D40] flex items-center gap-1">
+                                <CheckCircle size={15} weight="bold" className="text-[#5BBFA4]" />
+                                <span>Public Repository Verified</span>
+                              </span>
+                            ) : (
+                              <span className="text-[#B91C1C] flex items-center gap-1">
+                                <WarningCircle size={15} weight="bold" />
+                                <span>Private Repo</span>
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      <div className="text-left pt-1">
-                        <div className="text-xs sm:text-sm font-bold text-[#102038]/70 mb-1">
-                          Documented findings:
+                      {week.weekNumber === 2 ? (
+                        <div className="text-left pt-1 space-y-4">
+                          <div>
+                            <div className="text-xs sm:text-sm font-bold text-[#102038]/70 mb-1">Message to Manager:</div>
+                            <p className="text-sm sm:text-base text-[#102038]/90 whitespace-pre-wrap leading-relaxed italic text-left">{submission.managerMessage}</p>
+                          </div>
+                          <div>
+                            <div className="text-xs sm:text-sm font-bold text-[#102038]/70 mb-1">Answer Sheet:</div>
+                            <p className="text-sm sm:text-base text-[#102038]/90 whitespace-pre-wrap leading-relaxed text-left">{submission.answerSheet}</p>
+                          </div>
+                          <div>
+                            <div className="text-xs sm:text-sm font-bold text-[#102038]/70 mb-1">SQL Queries:</div>
+                            <pre className="text-[#102038] bg-[#FAF8F3] p-3 rounded-lg border border-[#102038]/10 text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                              {submission.sqlQueries}
+                            </pre>
+                          </div>
                         </div>
-                        <p className="text-sm sm:text-base text-[#102038]/90 whitespace-pre-line leading-relaxed italic text-left">
-                          &ldquo;{submission.reflectionFindings}&rdquo;
-                        </p>
-                      </div>
+                      ) : (
+                        <div className="text-left pt-1">
+                          <div className="text-xs sm:text-sm font-bold text-[#102038]/70 mb-1">
+                            Documented findings:
+                          </div>
+                          <p className="text-sm sm:text-base text-[#102038]/90 whitespace-pre-line leading-relaxed italic text-left">
+                            &ldquo;{submission.reflectionFindings}&rdquo;
+                          </p>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-sm font-bold text-[#102038]/60 bg-[#FFFFFF] border border-[#102038]/10 rounded-xl p-4">
-                      No repository submission was recorded for this checkpoint.
+                      No project submission was recorded for this checkpoint.
                     </div>
                   )}
 

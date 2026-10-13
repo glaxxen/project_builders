@@ -133,8 +133,11 @@ export const submissions = pgTable("submission", {
   weekId: text("weekId")
     .notNull()
     .references(() => weeks.id, { onDelete: "cascade" }),
-  githubUrl: text("githubUrl").notNull(),
-  reflectionFindings: text("reflectionFindings").notNull(),
+  githubUrl: text("githubUrl"),
+  reflectionFindings: text("reflectionFindings"),
+  sqlQueries: text("sqlQueries"),
+  answerSheet: text("answerSheet"),
+  managerMessage: text("managerMessage"),
   isReachable: boolean("isReachable").default(true).notNull(),
   submittedAt: timestamp("submittedAt", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),

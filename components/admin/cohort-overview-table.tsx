@@ -521,26 +521,52 @@ export function CohortOverviewTable({ students, weeks, assessments }: CohortOver
 
                       {sub ? (
                         <div className="bg-[#FAF8F3] border border-[#E8E2D6] rounded-lg p-3 space-y-2 text-xs font-sans">
-                          <div className="flex items-center justify-between">
-                            <a
-                              href={sub.githubUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-mono font-semibold text-[#102038] hover:text-[#5BBFA4] flex items-center gap-1.5"
-                            >
-                              <GithubLogo size={14} weight="bold" />
-                              <span>{sub.githubUrl}</span>
-                              <ArrowSquareOut size={12} weight="bold" />
-                            </a>
+                          <div className="flex items-center justify-between border-b border-[#E8E2D6] pb-2">
+                            {w.weekNumber === 2 ? (
+                              <div className="font-mono font-semibold text-[#102038] flex items-center gap-1.5">
+                                <FileText size={14} weight="bold" />
+                                <span>SQL & Answer Sheet Submission</span>
+                              </div>
+                            ) : (
+                              <a
+                                href={sub.githubUrl || "#"}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-mono font-semibold text-[#102038] hover:text-[#5BBFA4] flex items-center gap-1.5"
+                              >
+                                <GithubLogo size={14} weight="bold" />
+                                <span>{sub.githubUrl || "No URL"}</span>
+                                <ArrowSquareOut size={12} weight="bold" />
+                              </a>
+                            )}
 
                             <span className="text-[11px] font-mono text-[#7E8B9B]">
                               Submitted {new Date(sub.submittedAt).toLocaleDateString()}
                             </span>
                           </div>
 
-                          <p className="text-[#4A5568] italic border-t border-[#E8E2D6] pt-2 mt-1">
-                            &ldquo;{sub.reflectionFindings}&rdquo;
-                          </p>
+                          {w.weekNumber === 2 ? (
+                            <div className="space-y-3 pt-1">
+                              <div>
+                                <div className="text-[10px] uppercase font-mono font-bold text-[#7E8B9B] mb-1">Message to Manager</div>
+                                <p className="text-[#4A5568] italic whitespace-pre-wrap">{sub.managerMessage}</p>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase font-mono font-bold text-[#7E8B9B] mb-1">Answer Sheet</div>
+                                <p className="text-[#4A5568] whitespace-pre-wrap">{sub.answerSheet}</p>
+                              </div>
+                              <div>
+                                <div className="text-[10px] uppercase font-mono font-bold text-[#7E8B9B] mb-1">SQL Queries</div>
+                                <pre className="text-[#102038] bg-[#FFFFFF] p-2 rounded border border-[#E8E2D6] text-[10px] font-mono overflow-x-auto whitespace-pre-wrap">
+                                  {sub.sqlQueries}
+                                </pre>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-[#4A5568] italic pt-1">
+                              &ldquo;{sub.reflectionFindings}&rdquo;
+                            </p>
+                          )}
                         </div>
                       ) : (
                         <div className="text-xs font-mono text-[#A0AEC0] italic py-1">

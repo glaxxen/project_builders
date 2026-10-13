@@ -33,44 +33,65 @@ export function SubmitDialog({ week, existingSubmission, variant = "default", cu
   const [reflection, setReflection] = useState(
     existingSubmission?.reflectionFindings || ""
   );
+  
+  // Week 2 fields
+  const [sqlQueries, setSqlQueries] = useState(existingSubmission?.sqlQueries || "");
+  const [answerSheet, setAnswerSheet] = useState(existingSubmission?.answerSheet || "");
+  const [managerMessage, setManagerMessage] = useState(existingSubmission?.managerMessage || "");
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const isDeadlinePassed = new Date() > new Date(week.deadline);
+  const isWeek2 = week.weekNumber === 2;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setSuccessMsg(null);
 
-    let cleanUrl = (githubUrl || "").trim();
-    if (!cleanUrl) {
-      setErrorMsg("Please enter your GitHub repository link.");
-      return;
-    }
+    if (isWeek2) {
+      if (!sqlQueries.trim() || !answerSheet.trim() || !managerMessage.trim()) {
+        setErrorMsg("All three fields are required.");
+        return;
+      }
+      if (!sqlQueries.includes(";")) {
+        setErrorMsg("Your SQL queries should contain at least one semicolon (;).");
+        return;
+      }
+    } else {
+      let cleanUrl = (githubUrl || "").trim();
+      if (!cleanUrl) {
+        setErrorMsg("Please enter your GitHub repository link.");
+        return;
+      }
 
-    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-      cleanUrl = `https://${cleanUrl}`;
-    }
+      if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+        cleanUrl = `https://${cleanUrl}`;
+      }
 
-    const githubRegex = /^https?:\/\/(www\.)?github\.com\/[^\s/]+\/[^\s/]+/i;
-    if (!githubRegex.test(cleanUrl)) {
-      setErrorMsg("Please provide a valid GitHub repository URL (e.g. https://github.com/username/repository).");
-      return;
-    }
+      const githubRegex = /^https?:\/\/(www\.)?github\.com\/[^\s/]+\/[^\s/]+/i;
+      if (!githubRegex.test(cleanUrl)) {
+        setErrorMsg("Please provide a valid GitHub repository URL (e.g. https://github.com/username/repository).");
+        return;
+      }
 
-    const trimmedReflection = (reflection || "").trim();
-    if (!trimmedReflection) {
-      setErrorMsg("Please enter your key findings and reflections from the dataset.");
-      return;
+      const trimmedReflection = (reflection || "").trim();
+      if (!trimmedReflection) {
+        setErrorMsg("Please enter your key findings and reflections from the dataset.");
+        return;
+      }
     }
 
     startTransition(async () => {
       try {
         const result = await submitProjectAction({
           weekId: week.id,
-          githubUrl: cleanUrl,
-          reflectionFindings: trimmedReflection,
+          githubUrl: isWeek2 ? undefined : (githubUrl || "").trim(),
+          reflectionFindings: isWeek2 ? undefined : (reflection || "").trim(),
+          sqlQueries: isWeek2 ? sqlQueries.trim() : undefined,
+          answerSheet: isWeek2 ? answerSheet.trim() : undefined,
+          managerMessage: isWeek2 ? managerMessage.trim() : undefined,
         });
 
         if (result.success) {
@@ -211,50 +232,107 @@ export function SubmitDialog({ week, existingSubmission, variant = "default", cu
 
             {/* Form */}
             <form onSubmit={handleSubmit} noValidate className="space-y-4 font-sans text-sm">
-              <div className="space-y-1.5 text-left">
-                <label className="text-xs font-mono font-semibold text-[#102038] flex items-center gap-1.5">
-                  <GithubLogo size={15} weight="bold" />
-                  <span>Public GitHub Repository URL</span>
-                </label>
-                <input
-                  type="text"
-                  inputMode="url"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  disabled={isDeadlinePassed || isPending}
-                  placeholder="https://github.com/your-username/afrimart-analysis"
-                  value={githubUrl}
-                  onChange={(e) => {
-                    setGithubUrl(e.target.value);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  className="w-full min-h-[44px] px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg font-mono text-xs text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
-                />
-                <p className="text-[11px] text-[#7E8B9B]">
-                  Ensure your repository is <strong>public</strong> so instructors can review your work.
-                </p>
-              </div>
+              {isWeek2 ? (
+                <>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-sans font-semibold text-[#102038]">
+                      Your SQL Queries
+                    </label>
+                    <textarea
+                      rows={5}
+                      disabled={isDeadlinePassed || isPending}
+                      placeholder="SELECT * FROM zoomride_users;&#10;..."
+                      value={sqlQueries}
+                      onChange={(e) => {
+                        setSqlQueries(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs font-mono leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
+                    />
+                  </div>
 
-              <div className="space-y-1.5 text-left">
-                <label className="text-xs font-sans font-semibold text-[#102038]">
-                  Key findings and reflection (3 core insights)
-                </label>
-                <textarea
-                  rows={4}
-                  disabled={isDeadlinePassed || isPending}
-                  placeholder="1. Resolved accented country strings and reconciled $12.4k shipping discrepancy.&#10;2. Gross profit margin peaked at 38% in Kenya via cosmetics category.&#10;3. Identified top 5 return items and recommended supplier SLA adjustments."
-                  value={reflection}
-                  onChange={(e) => {
-                    setReflection(e.target.value);
-                    if (errorMsg) setErrorMsg(null);
-                  }}
-                  className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
-                />
-                <p className="text-[11px] text-[#7E8B9B]">
-                  Summarize your 3 most significant findings discovered from the dataset.
-                </p>
-              </div>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-sans font-semibold text-[#102038]">
+                      Your Answer Sheet (Q1–Q8 + bonus)
+                    </label>
+                    <textarea
+                      rows={4}
+                      disabled={isDeadlinePassed || isPending}
+                      placeholder="1. The most active user is...&#10;2. Total rides in October were..."
+                      value={answerSheet}
+                      onChange={(e) => {
+                        setAnswerSheet(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-sans font-semibold text-[#102038]">
+                      Your Message to the Manager
+                    </label>
+                    <textarea
+                      rows={4}
+                      disabled={isDeadlinePassed || isPending}
+                      placeholder="Hi Team,&#10;Here are the SQL extracts for the ZoomRide analysis..."
+                      value={managerMessage}
+                      onChange={(e) => {
+                        setManagerMessage(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-mono font-semibold text-[#102038] flex items-center gap-1.5">
+                      <GithubLogo size={15} weight="bold" />
+                      <span>Public GitHub Repository URL</span>
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="url"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      disabled={isDeadlinePassed || isPending}
+                      placeholder="https://github.com/your-username/afrimart-analysis"
+                      value={githubUrl}
+                      onChange={(e) => {
+                        setGithubUrl(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      className="w-full min-h-[44px] px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg font-mono text-xs text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
+                    />
+                    <p className="text-[11px] text-[#7E8B9B]">
+                      Ensure your repository is <strong>public</strong> so instructors can review your work.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5 text-left">
+                    <label className="text-xs font-sans font-semibold text-[#102038]">
+                      Key findings and reflection (3 core insights)
+                    </label>
+                    <textarea
+                      rows={4}
+                      disabled={isDeadlinePassed || isPending}
+                      placeholder="1. Resolved accented country strings and reconciled $12.4k shipping discrepancy.&#10;2. Gross profit margin peaked at 38% in Kenya via cosmetics category.&#10;3. Identified top 5 return items and recommended supplier SLA adjustments."
+                      value={reflection}
+                      onChange={(e) => {
+                        setReflection(e.target.value);
+                        if (errorMsg) setErrorMsg(null);
+                      }}
+                      className="w-full px-3.5 py-2.5 bg-[#FAF8F3] border border-[#102038]/20 rounded-lg text-xs leading-relaxed text-[#102038] focus:outline-none focus:ring-2 focus:ring-[#102038] disabled:opacity-60"
+                    />
+                    <p className="text-[11px] text-[#7E8B9B]">
+                      Summarize your 3 most significant findings discovered from the dataset.
+                    </p>
+                  </div>
+                </>
+              )}
 
               {/* Actions Footer */}
               <div className="pt-3 border-t border-[#102038]/10 space-y-3">
@@ -267,9 +345,9 @@ export function SubmitDialog({ week, existingSubmission, variant = "default", cu
 
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    {existingSubmission && (
+                    {existingSubmission && !isWeek2 && (
                       <a
-                        href={existingSubmission.githubUrl}
+                        href={existingSubmission.githubUrl || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1.5 min-h-[44px] text-xs font-mono text-[#102038] hover:text-[#5BBFA4] transition-colors"

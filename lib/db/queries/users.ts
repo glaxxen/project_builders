@@ -2,32 +2,56 @@ import { db } from "../index";
 import { users, type User } from "../schema";
 import { eq } from "drizzle-orm";
 import {
-  shouldUseRest,
-  restGet,
-  restInsert,
-  restUpdate,
-} from "../rest-fallback";
+  getLocalUserByEmail,
+  ensureLocalUserExists,
+  updateLocalUserName,
+  getAllLocalUsers,
+  type UserRecord,
+} from "../sqlite-store";
+
+function toSchemaUser(local: UserRecord): User {
+  return {
+    id: local.id,
+    name: local.name,
+    email: local.email,
+    role: local.role,
+    image: null,
+    emailVerified: null,
+    createdAt: new Date(local.createdAt),
+  };
+}
 
 export async function getUserByEmail(email: string): Promise<User | null> {
   const cleanEmail = email.toLowerCase().trim();
 
-  if (shouldUseRest()) {
-    const list = await restGet<User[]>("user", `email=eq.${encodeURIComponent(cleanEmail)}&limit=1`);
-    return list?.[0] || null;
+  // Fast local SQLite check
+  const local = getLocalUserByEmail(cleanEmail);
+  if (local) {
+    return toSchemaUser(local);
   }
 
+  // Attempt Drizzle DB if connected
   try {
     const res = await db
       .select()
       .from(users)
       .where(eq(users.email, cleanEmail))
       .limit(1);
-    return res[0] || null;
-  } catch (err) {
-    console.warn("Direct DB user query failed, falling back to REST:", err);
-    const list = await restGet<User[]>("user", `email=eq.${encodeURIComponent(cleanEmail)}&limit=1`);
-    return list?.[0] || null;
+    if (res[0]) {
+      // Sync to local
+      ensureLocalUserExists({
+        id: res[0].id,
+        email: res[0].email,
+        name: res[0].name,
+        role: res[0].role as any,
+      });
+      return res[0];
+    }
+  } catch {
+    // DB offline, rely on local SQLite
   }
+
+  return null;
 }
 
 export async function ensureUserExists(data: {
@@ -37,143 +61,66 @@ export async function ensureUserExists(data: {
   role?: string;
 }): Promise<User> {
   const cleanEmail = data.email.toLowerCase().trim();
-  const existing = await getUserByEmail(cleanEmail);
-  if (existing) return existing;
 
-  const id = data.id || `usr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-  const newUser = {
-    id,
+  const local = ensureLocalUserExists({
+    id: data.id,
     email: cleanEmail,
-    name: data.name || cleanEmail.split("@")[0],
-    role: data.role || "student",
-    createdAt: new Date().toISOString(),
-  };
+    name: data.name,
+    role: (data.role as any) || "student",
+  });
 
-  if (shouldUseRest()) {
-    const inserted = await restInsert<User[]>("user", newUser);
-    if (inserted?.[0]) return inserted[0];
-  }
-
+  // Background sync to Drizzle if connected
   try {
-    const [created] = await db
+    await db
       .insert(users)
       .values({
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-        createdAt: new Date(),
+        id: local.id,
+        email: local.email,
+        name: local.name,
+        role: local.role,
+        createdAt: new Date(local.createdAt),
       })
-      .returning();
-    if (created) return created;
-  } catch (err) {
-    console.warn("Direct DB user insert failed, falling back to REST:", err);
-    const inserted = await restInsert<User[]>("user", newUser);
-    if (inserted?.[0]) return inserted[0];
+      .onConflictDoNothing();
+  } catch {
+    // DB offline
   }
 
-  return {
-    id: newUser.id,
-    email: newUser.email,
-    name: newUser.name ?? null,
-    role: newUser.role,
-    image: null,
-    emailVerified: null,
-    createdAt: new Date(),
-  };
+  return toSchemaUser(local);
 }
 
 export async function updateUserName(emailOrId: string, newName: string): Promise<User | null> {
   const trimmed = newName.trim();
-  const isEmail = emailOrId.includes("@");
+  const updatedLocal = updateLocalUserName(emailOrId, trimmed);
 
-  if (shouldUseRest()) {
-    const filter = isEmail
-      ? `email=eq.${encodeURIComponent(emailOrId.toLowerCase().trim())}`
-      : `id=eq.${encodeURIComponent(emailOrId)}`;
-    const updated = await restUpdate<User[]>("user", filter, {
-      name: trimmed,
-    });
-    return updated?.[0] || null;
-  }
-
+  // Background sync to Drizzle if connected
   try {
+    const isEmail = emailOrId.includes("@");
     const condition = isEmail
       ? eq(users.email, emailOrId.toLowerCase().trim())
       : eq(users.id, emailOrId);
-    const [updated] = await db
+    await db
       .update(users)
       .set({ name: trimmed })
-      .where(condition)
-      .returning();
-    return updated || null;
-  } catch (err) {
-    console.warn("Direct DB user update failed, falling back to REST:", err);
-    const filter = isEmail
-      ? `email=eq.${encodeURIComponent(emailOrId.toLowerCase().trim())}`
-      : `id=eq.${encodeURIComponent(emailOrId)}`;
-    const updated = await restUpdate<User[]>("user", filter, {
-      name: trimmed,
-    });
-    return updated?.[0] || null;
+      .where(condition);
+  } catch {
+    // DB offline
   }
+
+  return updatedLocal ? toSchemaUser(updatedLocal) : null;
 }
 
 export async function getAllAdmins(): Promise<User[]> {
-  if (shouldUseRest()) {
-    const list = await restGet<User[]>("user", "role=eq.admin&order=createdAt.desc");
-    return list || [];
-  }
-
-  try {
-    return await db.select().from(users).where(eq(users.role, "admin"));
-  } catch (err) {
-    console.warn("Direct DB getAllAdmins failed, falling back to REST:", err);
-    const list = await restGet<User[]>("user", "role=eq.admin&order=createdAt.desc");
-    return list || [];
-  }
+  const allUsers = getAllLocalUsers();
+  return allUsers.filter((u) => u.role === "admin").map(toSchemaUser);
 }
 
 export async function updateUserRole(emailOrId: string, role: "admin" | "student"): Promise<User | null> {
   const cleanEmail = emailOrId.toLowerCase().trim();
-  const isEmail = cleanEmail.includes("@");
+  const existing = await ensureUserExists({
+    email: cleanEmail,
+    role,
+  });
 
-  if (isEmail) {
-    // Ensure user row exists so role persists
-    await ensureUserExists({
-      email: cleanEmail,
-      role,
-    });
-  }
-
-  if (shouldUseRest()) {
-    const filter = isEmail
-      ? `email=eq.${encodeURIComponent(cleanEmail)}`
-      : `id=eq.${encodeURIComponent(cleanEmail)}`;
-    const updated = await restUpdate<User[]>("user", filter, {
-      role,
-    });
-    return updated?.[0] || null;
-  }
-
-  try {
-    const condition = isEmail
-      ? eq(users.email, cleanEmail)
-      : eq(users.id, cleanEmail);
-    const [updated] = await db
-      .update(users)
-      .set({ role })
-      .where(condition)
-      .returning();
-    return updated || null;
-  } catch (err) {
-    console.warn("Direct DB updateUserRole failed, falling back to REST:", err);
-    const filter = isEmail
-      ? `email=eq.${encodeURIComponent(cleanEmail)}`
-      : `id=eq.${encodeURIComponent(cleanEmail)}`;
-    const updated = await restUpdate<User[]>("user", filter, {
-      role,
-    });
-    return updated?.[0] || null;
-  }
+  const updatedLocal = updateLocalUserName(cleanEmail, existing.name || cleanEmail.split("@")[0]);
+  return updatedLocal ? toSchemaUser(updatedLocal) : existing;
 }

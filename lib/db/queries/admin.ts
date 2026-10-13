@@ -11,10 +11,13 @@ export interface StudentCohortRow {
     number,
     {
       id: string;
-      githubUrl: string;
+      githubUrl: string | null;
       isReachable: boolean;
       submittedAt: Date;
-      reflectionFindings: string;
+      reflectionFindings: string | null;
+      sqlQueries: string | null;
+      answerSheet: string | null;
+      managerMessage: string | null;
     } | null
   >;
   scoresByWeek: Record<number, number | null>;
@@ -112,6 +115,9 @@ export async function getAdminCohortOverview(cohortId: string) {
           isReachable: sub.isReachable,
           submittedAt: new Date(sub.submittedAt),
           reflectionFindings: sub.reflectionFindings,
+          sqlQueries: sub.sqlQueries,
+          answerSheet: sub.answerSheet,
+          managerMessage: sub.managerMessage,
         };
         submittedCount += 1;
       } else {

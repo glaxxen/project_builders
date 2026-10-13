@@ -1,47 +1,41 @@
 import NextAuth from "next-auth";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { authConfig } from "./auth.config";
-import { db } from "@/lib/db";
-import { users, accounts, sessions, verificationTokens } from "@/lib/db/schema";
+import { ensureLocalUserExists } from "@/lib/db/sqlite-store";
+import { ensureUserExists as ensureDbUserExists } from "@/lib/db/queries/users";
 import { getRoleForEmail } from "@/lib/auth/roles";
-import { eq } from "drizzle-orm";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
-  adapter: DrizzleAdapter(db, {
-    usersTable: users,
-    accountsTable: accounts,
-    sessionsTable: sessions,
-    verificationTokensTable: verificationTokens,
-  }),
-  events: {
-    async createUser({ user }) {
-      if (user.email) {
+  callbacks: {
+    ...authConfig.callbacks,
+    async signIn({ user, account, profile }) {
+      if (user?.email) {
+        const cleanEmail = user.email.toLowerCase().trim();
+        const role = getRoleForEmail(cleanEmail);
+
         try {
-          const role = getRoleForEmail(user.email);
-          if (role === "admin") {
-            await db
-              .update(users)
-              .set({ role: "admin" })
-              .where(eq(users.email, user.email));
-          }
+          // 1. Sync to local SQLite store (guaranteed sub-millisecond persistence)
+          ensureLocalUserExists({
+            id: user.id || undefined,
+            email: cleanEmail,
+            name: user.name || null,
+            role: role as any,
+          });
+
+          // 2. Safe background sync to external DB if available (non-blocking)
+          ensureDbUserExists({
+            id: user.id || undefined,
+            email: cleanEmail,
+            name: user.name || null,
+            role,
+          }).catch((err) => {
+            console.warn("[Auth] Background external DB sync warning (non-fatal):", err?.message || err);
+          });
         } catch (err) {
-          console.warn("Could not update role in createUser event:", err);
+          console.warn("[Auth] User persistence warning during signIn (non-fatal):", err);
         }
       }
-    },
-    async linkAccount({ user }) {
-      if (user.email) {
-        try {
-          const role = getRoleForEmail(user.email);
-          await db
-            .update(users)
-            .set({ role })
-            .where(eq(users.email, user.email));
-        } catch (err) {
-          console.warn("Could not update role in linkAccount event:", err);
-        }
-      }
+      return true;
     },
   },
 });

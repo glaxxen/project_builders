@@ -44,6 +44,7 @@ export async function fetchSupabaseRest<T = any>(
       ...options,
       headers,
       cache: "no-store",
+      signal: options?.signal || AbortSignal.timeout(1200),
     });
 
     if (!res.ok) {

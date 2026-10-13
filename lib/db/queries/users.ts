@@ -121,6 +121,7 @@ export async function updateUserRole(emailOrId: string, role: "admin" | "student
     role,
   });
 
-  const updatedLocal = updateLocalUserName(cleanEmail, existing.name || cleanEmail.split("@")[0]);
+  const fallbackName = existing.name || cleanEmail.split("@")[0] || "User";
+  const updatedLocal = updateLocalUserName(cleanEmail, fallbackName);
   return updatedLocal ? toSchemaUser(updatedLocal) : existing;
 }
